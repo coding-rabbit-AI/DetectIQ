@@ -1,0 +1,2 @@
+# Elasticsearch-specific dependencies
+elasticsearch>=8.0.0 

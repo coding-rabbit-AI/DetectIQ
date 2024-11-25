@@ -1,0 +1,24 @@
+name: Check Requirements Files
+
+on:
+  push:
+    paths:
+      - 'pyproject.toml'
+
+jobs:
+  check-requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Update requirements
+        run: python update_requirements.py
+      - name: Check for changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Requirements files are out of sync with pyproject.toml"
+            exit 1
+          fi 

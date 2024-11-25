@@ -1,0 +1,2 @@
+# Splunk-specific dependencies
+splunk-sdk>=1.7.0 

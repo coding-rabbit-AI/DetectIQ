@@ -1,0 +1,2 @@
+# Microsoft XDR-specific dependencies
+msal>=1.20.0  # For Microsoft authentication 
