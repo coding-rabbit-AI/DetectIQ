@@ -103,7 +103,8 @@ class DjangoRuleRepository:
                 enabled=rule_data.get("enabled", True),
                 description=rule_data.get("description", ""),
                 user_id=self.user_id,
-                source=rule_source,  # Add the source field
+                source=rule_source,
+                metadata=rule_data.get("metadata", {}),
             )
 
     async def create_rule(self, rule_data: Dict[str, Any]) -> StoredRule:

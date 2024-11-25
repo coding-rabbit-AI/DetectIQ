@@ -124,7 +124,7 @@ class RulesetManager:
                         continue
 
                     # Extract and validate severity
-                    raw_severity = rule["metadata"].get("severity", "medium")
+                    raw_severity = rule.get('severity') or rule["metadata"].get("severity", "medium")
                     validated_severity = self._validate_severity(raw_severity)
 
                     # Extract title based on rule type
@@ -133,9 +133,11 @@ class RulesetManager:
                             rule["metadata"].get("rule_name")
                             or rule["metadata"].get("title")
                             or rule.get("title", f"Untitled_{rule_type}_Rule_{i}")
-                        )
+                        ).replace("_", " ")
                     else:
-                        title = rule["metadata"].get("title", f"Untitled_{rule_type}_Rule_{i}")
+                        title = rule["metadata"].get("title", f"Untitled_{rule_type}_Rule_{i}").replace("_", " ")
+                    if title.lower().startswith("untitled"):
+                        logger.warning(f"Untitled rule detected: {title}")
 
                     # Format rule data for database
                     formatted_rule = {

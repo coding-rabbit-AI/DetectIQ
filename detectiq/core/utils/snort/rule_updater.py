@@ -112,23 +112,23 @@ class SnortRuleUpdater:
                         try:
                             # Extract basic metadata from the rule
                             metadata = self._parse_rule_metadata(rule)
-
-                            rules.append(
-                                {
-                                    "content": rule,
-                                    "metadata": {
-                                        "file_name": file.name,
-                                        "rule_type": "snort",
-                                        "path": str(file),
-                                        **metadata,
-                                    },
-                                }
-                            )
+                            if not metadata:  # Skip invalid/incomplete rules
+                                continue
+                                
+                            rules.append({
+                                "content": rule,
+                                "metadata": {
+                                    "file_name": file.name,
+                                    "rule_type": "snort",
+                                    "path": str(file),
+                                    **metadata,
+                                },
+                            })
                         except Exception as e:
                             logger.warning(f"Failed to process rule: {rule[:100]}... Error: {e}")
                             continue
 
-            logger.info(f"Loaded {len(rules)} individual Snort rules")
+            logger.info(f"Loaded {len(rules)} valid Snort rules")
             return rules
         except Exception as e:
             logger.error(f"Failed to load rules: {str(e)}")
@@ -138,19 +138,26 @@ class SnortRuleUpdater:
         """Parse category, subcategory and name from msg field.
 
         Args:
-            msg: Rule message string
+            msg: Rule message string (e.g., "MALWARE-CNC HttpBrowser User-Agent outbound communication attmept")
 
         Returns:
             Tuple of (category, subcategory, name)
         """
-        parts = msg.split(" ", 2)
+        parts = msg.split(" ", 1)  # Split only on first space
         if len(parts) >= 2 and "-" in parts[0]:
             category_parts = parts[0].split("-")
             if len(category_parts) == 2:
                 category = category_parts[0].title()
                 subcategory = category_parts[1].title()
-                name = parts[1] if len(parts) == 2 else parts[2]
+                name = parts[1]  # Keep everything after the first space as name
                 return category, subcategory, name
+            else:
+                # Handle case where there's only category
+                category = parts[0].title()
+                name = parts[1]
+                return category, "", name
+        
+        # If no category/subcategory format found
         return "", "", msg
 
     def _get_severity_from_classtype(self, classtype: str) -> str:
@@ -175,14 +182,13 @@ class SnortRuleUpdater:
         return "medium"  # Default severity
 
     def _parse_rule_metadata(self, rule_text: str) -> Dict[str, str]:
-        """Parse metadata from a Snort rule using idstools.
-
-        Args:
-            rule_text: Single Snort rule string
-
-        Returns:
-            Dictionary containing extracted metadata including category and subcategory
-        """
+        """Parse metadata from a Snort rule."""
+        # First check if rule has required components
+        header_parts = rule_text.split('(')[0].strip().split()
+        if len(header_parts) < 5:  # action proto src_ip src_port direction dst_ip dst_port
+            logger.debug(f"Skipping incomplete rule: {rule_text[:100]}...")
+            return {}  # Return empty dict to indicate invalid rule
+        
         metadata = {
             "severity": "medium",
             "description": "",
@@ -199,37 +205,83 @@ class SnortRuleUpdater:
         }
 
         try:
-            rule = parse_rule(rule_text)
-            if rule:
-                # Extract basic metadata
-                metadata.update(
-                    {
-                        "sid": str(rule.sid) if rule.sid else "",
-                        "rev": str(rule.rev) if rule.rev else "",
-                        "msg": rule.msg if rule.msg else "",
-                        "classtype": rule.classtype if rule.classtype else "",
-                        "gid": str(rule.gid) if rule.gid else "",
-                        "reference": rule.references if hasattr(rule, "references") else [],
-                        "metadata": rule.metadata if hasattr(rule, "metadata") else {},
-                    }
+            # Split header and options
+            if "(" not in rule_text:
+                return metadata
+            
+            header, options = rule_text.split("(", 1)
+            options = options.strip().rstrip(")")
+            
+            # Parse options
+            current_option = ""
+            in_quotes = False
+            options_dict = {}
+            
+            for char in options:
+                if char == '"':
+                    in_quotes = not in_quotes
+                    current_option += char
+                elif char == ';' and not in_quotes:
+                    if ":" in current_option:
+                        key, value = current_option.split(":", 1)
+                        options_dict[key.strip()] = value.strip().strip('"')
+                    else:
+                        options_dict[current_option.strip()] = ""
+                    current_option = ""
+                else:
+                    current_option += char
+
+            # Extract key metadata
+            if "msg" in options_dict:
+                msg = options_dict["msg"]
+                metadata.update({
+                    "msg": msg,
+                    "description": msg,
+                    "name": msg,
+                    "title": msg,
+                    "category": msg.split("-")[0].title() if "-" in msg.split()[0] else "",
+                    "subcategory": msg.split("-")[1].split()[0].title() if "-" in msg.split()[0] else "",
+                })
+
+            if "sid" in options_dict:
+                metadata["sid"] = options_dict["sid"]
+            
+            if "rev" in options_dict:
+                metadata["rev"] = options_dict["rev"]
+            
+            if "gid" in options_dict:
+                metadata["gid"] = options_dict["gid"]
+            
+            if "classtype" in options_dict:
+                metadata["classtype"] = options_dict["classtype"]
+                metadata["severity"] = self._get_severity_from_classtype(options_dict["classtype"])
+            
+            if "reference" in options_dict:
+                metadata["reference"] = [r.strip() for r in options_dict["reference"].split(",")]
+            
+            if "metadata" in options_dict:
+                metadata["metadata"] = dict(
+                    item.split(" ", 1) 
+                    for item in options_dict["metadata"].split(",") 
+                    if " " in item
                 )
+                # Check for impact_flag red in metadata
+                if metadata["metadata"].get("impact_flag") == "red":
+                    metadata["severity"] = "critical"
+            
+            # Fallback to classtype-based severity if not critical
+            if metadata["severity"] != "critical" and "classtype" in options_dict:
+                metadata["severity"] = self._get_severity_from_classtype(options_dict["classtype"])
 
-                # Set description and parse category/subcategory from msg
-                if rule.msg:
-                    metadata["description"] = rule.msg
-                    category, subcategory, name = self._parse_msg_parts(rule.msg)
-                    metadata.update(
-                        {
-                            "category": category,
-                            "subcategory": subcategory,
-                            "name": name,
-                            "title": f"{category}: {name}" if category else name,
-                        }
-                    )
-
-                # Set severity based on classtype
-                if rule.classtype:
-                    metadata["severity"] = self._get_severity_from_classtype(rule.classtype)
+            # Parse header for rule type
+            header_parts = header.strip().split()
+            if len(header_parts) > 0:
+                if header_parts[0] == "file_id":
+                    metadata["rule_type"] = "file_identification"
+                elif len(header_parts) > 1 and header_parts[1] == "file":
+                    metadata["rule_type"] = "file"
+                else:
+                    metadata["rule_type"] = "traditional"
 
         except Exception as e:
             logger.warning(f"Error parsing rule metadata: {e}")

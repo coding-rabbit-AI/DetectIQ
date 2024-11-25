@@ -52,6 +52,7 @@ class SnortRulesetManager:
 
             # Update and load rules
             await self.updater.update_rules(force=force)
+            # 
             rules = await self.updater.load_rules()
 
             logger.info(f"Successfully updated and loaded {len(rules)} Snort rules")

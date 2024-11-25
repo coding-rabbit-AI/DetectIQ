@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import shutil
+from turtle import st
 import zipfile
 from datetime import datetime
 from io import BytesIO
@@ -248,7 +249,6 @@ class YaraRuleUpdater:
             "reference": "",
             "date": "",
             "hash": "",
-            "severity": "medium",  # Default severity
             "type": "",
             "tags": [],
         }
@@ -259,19 +259,22 @@ class YaraRuleUpdater:
             # Handle both list and dict metadata formats
             if isinstance(rule_metadata, dict):
                 for key, value in rule_metadata.items():
-                    if key == "severity" or key == "score":
-                        metadata["severity"] = map_severity_score(value)
-                    else:
-                        metadata[key] = value
+                    metadata[key] = value
             elif isinstance(rule_metadata, list):
                 # Convert list metadata to dict
                 for item in rule_metadata:
-                    if isinstance(item, dict) and len(item) == 1:
+                    if isinstance(item, dict):
                         key, value = next(iter(item.items()))
-                        if key == "severity" or key == "score":
-                            metadata["severity"] = map_severity_score(value)
-                        else:
-                            metadata[key] = value
+                        metadata[key] = value
+            if "severity" in metadata:
+                metadata["severity"] = map_severity_score(metadata["severity"])
+            elif "score" in metadata:
+                metadata["severity"] = map_severity_score(metadata["score"])
+            else:
+                metadata["severity"] = "medium"
+        else:
+            print()
+            
 
         # Set title from rule name if not in metadata
         if not metadata["title"] and "rule_name" in rule:
@@ -284,37 +287,49 @@ class YaraRuleUpdater:
         return metadata
 
     async def load_rules(self) -> List[Dict[str, Any]]:
-        """Load YARA rules from the rules directory."""
+        """Load individual YARA rules from the rules directory."""
         rules = []
         try:
-            for rule_file in self.rule_dir.glob("**/*.yar"):
+            # Only look in individual_rules directory
+            individual_rules_dir = self.rule_dir / "individual_rules"
+            if not individual_rules_dir.exists():
+                logger.error("Individual rules directory not found")
+                return rules
+
+            parser = plyara.Plyara()
+            for rule_file in individual_rules_dir.glob("*.yar"):
                 if rule_file.is_file():
                     try:
                         with open(rule_file) as f:
                             content = f.read()
-
-                        title = rule_file.stem.replace("_", " ").title()
-
-                        # Create rule dictionary
+                        # Clear parser cache so we dont keep adding to rules
+                        parser.clear()
+                        # Parse the rule to extract metadata
+                        parsed_rules = parser.parse_string(content)
+                        if not parsed_rules:
+                            continue
+                            
+                        rule_data = parsed_rules[0]  # Should only be one rule per file
+                        metadata = self._parse_rule_metadata(rule_data)
+                        orig_metadata = rule_data.get("metadata", {})
+                        if isinstance(orig_metadata, list):
+                            orig_metadata = {k: v for i in orig_metadata for k, v in i.items()}
+                        elif not orig_metadata:
+                            orig_metadata = metadata
                         rule_dict = {
-                            "title": title,
+                            "title": metadata.get("title", rule_file.stem).replace(" ", "_"),
                             "content": content,
                             "type": "yara",
-                            "severity": "medium",  # Default severity
-                            "metadata": {
-                                "file_path": str(rule_file),
-                                "description": f"YARA rule for {title}",
-                                "title": title,
-                            },
+                            "severity": metadata.get("severity", "medium"),
+                            "metadata": orig_metadata,
                         }
                         rules.append(rule_dict)
-                        logger.debug(f"Loaded YARA rule: {title}")
 
                     except Exception as e:
                         logger.warning(f"Failed to load YARA rule {rule_file}: {e}")
                         continue
 
-            logger.info(f"Loaded {len(rules)} YARA rules")
+            logger.info(f"Loaded {len(rules)} individual YARA rules")
             return rules
 
         except Exception as e:
@@ -353,4 +368,3 @@ class YaraRuleUpdater:
 if __name__ == "__main__":
     updater = YaraRuleUpdater()
     rules = asyncio.run(updater.load_rules())
-    print(rules)
