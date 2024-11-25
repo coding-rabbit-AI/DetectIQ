@@ -26,6 +26,13 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const isSelected = (itemPath: string) => {
+    if (itemPath === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(itemPath);
+  };
+
   return (
     <List sx={{ pt: 2 }}>
       {menuItems.map((item) => (
@@ -38,24 +45,24 @@ export default function Sidebar() {
             borderRadius: 2,
             cursor: 'pointer',
             transition: 'all 0.2s ease-in-out',
-            bgcolor: pathname === item.path ? 'rgba(97, 84, 163, 0.15)' : 'transparent',
+            bgcolor: isSelected(item.path) ? 'rgba(97, 84, 163, 0.15)' : 'transparent',
             '&:hover': {
               bgcolor: 'rgba(97, 84, 163, 0.1)',
               transform: 'translateX(4px)',
             },
             '& .MuiListItemIcon-root': {
-              color: pathname === item.path ? '#6154a3' : 'inherit',
+              color: isSelected(item.path) ? '#6154a3' : 'inherit',
               transition: 'color 0.2s ease-in-out',
             },
             '& .MuiListItemText-primary': {
-              fontWeight: pathname === item.path ? 600 : 400,
-              color: pathname === item.path ? '#6154a3' : 'inherit',
+              fontWeight: isSelected(item.path) ? 600 : 400,
+              color: isSelected(item.path) ? '#6154a3' : 'inherit',
             }
           }}
         >
           <ListItemIcon 
             sx={{ 
-              color: pathname === item.path ? 'primary.light' : 'inherit',
+              color: isSelected(item.path) ? 'primary.light' : 'inherit',
               minWidth: 40 
             }}
           >
@@ -65,7 +72,7 @@ export default function Sidebar() {
             primary={item.text}
             primaryTypographyProps={{
               fontSize: '0.95rem',
-              fontWeight: pathname === item.path ? 600 : 400,
+              fontWeight: isSelected(item.path) ? 600 : 400,
             }}
           />
         </ListItem>

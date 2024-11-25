@@ -305,17 +305,6 @@ export default function AboutPage() {
                 fontSize: '0.875rem',
                 maxHeight: '500px',
                 overflow: 'auto',
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                  height: '8px',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  backgroundColor: theme.palette.primary.main,
-                  borderRadius: '4px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  backgroundColor: theme.palette.background.paper,
-                },
               }}
             >
               {licenses.sigma}

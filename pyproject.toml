@@ -26,8 +26,26 @@ plyara = "^2.1.1"
 requests = "^2.32.3"
 aiofiles = "^24.1.0"
 idstools = "^0.6.5"
-djangorestframework-simplejwt = "^5.3.1"
 pefile = "^2024.8.26"
+pyyaml = "^6.0"
+
+# Webapp extras
+django = {version = "^4.2.0", optional = true}
+djangorestframework = {version = "^3.14.0", optional = true}
+django-cors-headers = {version = "^4.0.0", optional = true}
+psycopg2-binary = {version = "^2.9.0", optional = true}
+django-environ = {version = "^0.10.0", optional = true}
+djangorestframework-simplejwt = {version = "^5.3.1", optional = true}
+django-extensions = {version = "^3.2.3", optional = true}
+
+# Splunk extras
+splunk-sdk = {version = "^2.1.0", optional = true}
+
+# Elasticsearch extras
+elasticsearch = {version = "^8.0.0", optional = true}
+
+# Microsoft extras
+msal = {version = "^1.31.1", optional = true}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
@@ -36,40 +54,22 @@ black = "^24.8.0"
 ruff = "^0.7.2"
 pytest-asyncio = "^0.24.0"
 python-dotenv = "^1.0.1"
+toml = "^0.10.2"
 
-[tool.poetry.group.splunk]
-optional = true
+[tool.poetry.extras]
+splunk = ["splunk-sdk"]
+elastic = ["elasticsearch"]
+microsoft = ["msal"]
+webapp = [
+    "django", 
+    "djangorestframework", 
+    "django-cors-headers", 
+    "psycopg2-binary", 
+    "django-environ", 
+    "djangorestframework-simplejwt", 
+    "django-extensions"
+]
 
-[tool.poetry.group.splunk.dependencies]
-splunk-sdk = "^2.1.0"
-
-[tool.poetry.group.elastic]
-optional = true
-
-[tool.poetry.group.elastic.dependencies]
-elasticsearch = {extras = ["async"], version = "^8.0.0"}
-
-[tool.poetry.group.microsoft]
-optional = true
-
-[tool.poetry.group.microsoft.dependencies]
-msal = "^1.31.1"
-
-[tool.poetry.group.webapp]
-optional = true
-
-[tool.poetry.group.webapp.dependencies]
-django = "^4.2.0"
-djangorestframework = "^3.14.0"
-django-cors-headers = "^4.0.0"
-psycopg2-binary = "^2.9.0"
-django-environ = "^0.10.0"
-pyyaml = "^6.0"
-djangorestframework-simplejwt = "^5.3.1"
-django-extensions = "^3.2.3"
-
-[tool.poetry.group.dev]
-optional = true
 
 [build-system]
 requires = ["poetry-core"]

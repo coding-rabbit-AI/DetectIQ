@@ -49,27 +49,40 @@ export default function RuleCard({ rule, onRuleClick, onMenuClick, onDeploySucce
     >
       <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '100%' }}>
-          <Box sx={{ overflow: 'hidden', flex: 1 }}>
+          <Box sx={{ 
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
             <Typography variant="h6" noWrap sx={{ mb: 1 }}>
               {rule.title}
             </Typography>
-            <RuleChips rule={rule} />
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap',
+              gap: 1,
+              mt: 2,
+              mb: 2
+            }}>
+              <RuleChips rule={rule} size="small" />
+            </Box>
             <Typography 
               variant="body2" 
               color="textSecondary"
               sx={{
-                mt: 1,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 display: '-webkit-box',
-                WebkitLineClamp: 3,
+                WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
+                wordBreak: 'break-word'
               }}
             >
               {rule.description}
             </Typography>
           </Box>
-          <Box sx={{ ml: 2 }}>
+          <Box sx={{ ml: 2, flexShrink: 0 }}>
             {rule.type === 'sigma' && (
               <RuleDeployButton 
                 ruleId={typeof rule.id === 'string' ? parseInt(rule.id, 10) : rule.id} 

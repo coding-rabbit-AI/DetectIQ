@@ -15,11 +15,10 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import debounce from 'lodash/debounce';
 import { useRuleStore } from '@/store/ruleStore';
-import { RuleFilters as RuleFiltersType, RuleSeverity, RuleType, IntegrationType } from '@/types/rules';
+import { RuleFilters as RuleFiltersType, RuleType, IntegrationType } from '@/types/rules';
 import { ruleTypeMap } from '@/constants/rules';
 import { severityOptions } from '@/constants/rules';
 import { MITRE_TACTICS, MITRETactic } from '@/constants/mitre';
-import { ruleSourceMap } from '@/constants/rules';
 import { RULE_SOURCES, RULE_TYPES } from '@/constants/rules';
 import { AVAILABLE_SOURCES } from '@/constants/rules';
 
@@ -30,17 +29,6 @@ const integrationTypes: IntegrationType[] = ['splunk', 'elastic', 'microsoft_xdr
 const formatSeverity = (severity: string): string => {
   if (!severity || typeof severity !== 'string') return 'Unknown';
   return severity.charAt(0).toUpperCase() + severity.slice(1).toLowerCase();
-};
-
-// Add this helper function
-const getRuleSources = () => {
-  const sources = new Set<string>();
-  Object.values(RULE_TYPES).forEach(type => {
-    // Add both LLM and non-LLM sources
-    sources.add(RULE_SOURCES[type]('llm'));
-    sources.add(RULE_SOURCES[type]());
-  });
-  return Array.from(sources);
 };
 
 export default function RuleFilters() {

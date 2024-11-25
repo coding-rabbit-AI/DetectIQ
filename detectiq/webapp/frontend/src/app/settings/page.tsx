@@ -14,11 +14,11 @@ import {
   Switch,
   FormControlLabel,
   CircularProgress,
-  Snackbar,
 } from '@mui/material';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { rulesApi } from '@/api/client';
 import { Settings, IntegrationCredentials } from '@/types/settings';
+import Notification from '@/components/common/Notification';
 
 interface TestResult {
   success: boolean;
@@ -490,21 +490,12 @@ export default function SettingsPage() {
         </Button>
       </Box>
 
-      <Snackbar
+      <Notification
         open={notification.open}
-        autoHideDuration={6000}
+        message={notification.message}
+        severity={notification.type}
         onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleClose} 
-          severity={notification.type}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
+      />
     </Box>
   );
 } 

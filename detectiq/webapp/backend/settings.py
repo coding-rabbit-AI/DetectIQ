@@ -5,6 +5,9 @@ import environ
 from django.core.exceptions import ImproperlyConfigured
 
 from detectiq.globals import DEFAULT_DIRS
+from detectiq.core.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 # Initialize environ with proper typing for paths
 env = environ.Env(
@@ -31,7 +34,7 @@ if os.path.exists(env_file):
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
-    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in environment variables")
+    logger.warning("DJANGO_SECRET_KEY is not set in environment variables")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")

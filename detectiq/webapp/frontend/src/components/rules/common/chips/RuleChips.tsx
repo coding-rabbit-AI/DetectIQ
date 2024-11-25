@@ -24,7 +24,14 @@ export default function RuleChips({ rule, size = 'small' }: RuleChipsProps) {
   };
 
   return (
-    <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+    <Box sx={{ 
+      display: 'flex', 
+      gap: 1, 
+      flexWrap: 'wrap',
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden'
+    }}>
       <Chip 
         label={RULE_TYPE_LABELS[rule.type] || rule.type}
         size={size}

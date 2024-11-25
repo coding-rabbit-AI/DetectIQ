@@ -16,6 +16,7 @@ import { useSettings } from '@/hooks/useSettings';
 import { rulesApi } from '@/api/client';
 import { INTEGRATION_LABELS, INTEGRATIONS } from '@/constants/rules';
 import { IntegrationConfig } from '@/types/settings';
+import Notification from '@/components/common/Notification';
 
 interface RuleDeployButtonProps {
   ruleId: string | number;
@@ -145,27 +146,12 @@ export default function RuleDeployButton({ ruleId, onSuccess }: RuleDeployButton
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        key={successMessage}
+      <Notification
         open={Boolean(successMessage)}
-        autoHideDuration={6000}
+        message={successMessage || ''}
+        severity="success"
         onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ position: 'fixed', zIndex: 9999 }}
-      >
-        <Alert 
-          onClose={handleSnackbarClose} 
-          severity="success"
-          variant="filled"
-          elevation={6}
-          sx={{ 
-            width: '100%',
-            minWidth: '300px'
-          }}
-        >
-          {successMessage}
-        </Alert>
-      </Snackbar>
+      />
     </Box>
   );
 } 

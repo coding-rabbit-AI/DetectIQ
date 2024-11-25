@@ -1,1 +1,7 @@
 -r requirements/common.txt
+
+# Available extras (install with pip -r requirements/<extra>.txt):
+# - splunk
+# - elastic
+# - microsoft
+# - webapp
