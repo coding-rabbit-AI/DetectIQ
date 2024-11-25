@@ -21,12 +21,12 @@ class StoredRule(models.Model):
     source = models.CharField(
         max_length=50,
         choices=[
-            ('DetectIQ', 'DetectIQ'),
-            ('SigmaHQ', 'SigmaHQ'),
-            ('YARA-Forge', 'YARA-Forge'),
-            ('Snort3 Community', 'Snort3 Community')
+            ("DetectIQ", "DetectIQ"),
+            ("SigmaHQ", "SigmaHQ"),
+            ("YARA-Forge", "YARA-Forge"),
+            ("Snort3 Community", "Snort3 Community"),
         ],
-        default='DetectIQ'
+        default="DetectIQ",
     )
 
     class Meta:

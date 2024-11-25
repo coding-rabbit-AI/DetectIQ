@@ -86,7 +86,7 @@ async def main():
     print(f"\n\nQUESTION:\n {user_input}", end="\n\n")
     print("ANSWER: \n")
     print(answer.get("output"), end="\n\n")
-    
+
     print("\n--------\nRULE CREATION\n--------\n")
     user_input = "Create a Sigma rule to detect suspicious activity in the Windows Registry."
     answer = await sigma_agent_executor.ainvoke({"input": user_input})

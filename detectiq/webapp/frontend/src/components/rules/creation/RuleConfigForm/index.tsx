@@ -23,7 +23,7 @@ interface RuleConfigFormProps {
   onRuleTypeChange: (type: RuleType) => void;
   onDescriptionChange: (description: string) => void;
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: () => void;
+  onSubmit: (e: React.FormEvent) => Promise<void>;
 }
 
 export default function RuleConfigForm({

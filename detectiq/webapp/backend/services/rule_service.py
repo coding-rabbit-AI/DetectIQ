@@ -87,17 +87,13 @@ class DjangoRuleRepository:
 
     async def save_rules(self, rules: List[Dict[str, Any]], source: str) -> None:
         """Save rules to database."""
-        source_mapping = {
-            'sigma': 'SigmaHQ',
-            'yara': 'YARA-Forge',
-            'snort': 'Snort3 Community'
-        }
+        source_mapping = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
 
         for rule_data in rules:
             rule_type = rule_data.get("type", "sigma")
             # Use the source mapping based on rule type
-            rule_source = source_mapping.get(rule_type, 'DetectIQ')
-            
+            rule_source = source_mapping.get(rule_type, "DetectIQ")
+
             await StoredRule.objects.acreate(
                 title=rule_data["title"],
                 content=rule_data["content"],
@@ -107,7 +103,7 @@ class DjangoRuleRepository:
                 enabled=rule_data.get("enabled", True),
                 description=rule_data.get("description", ""),
                 user_id=self.user_id,
-                source=rule_source  # Add the source field
+                source=rule_source,  # Add the source field
             )
 
     async def create_rule(self, rule_data: Dict[str, Any]) -> StoredRule:

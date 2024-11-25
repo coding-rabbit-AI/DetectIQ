@@ -292,10 +292,9 @@ class YaraRuleUpdater:
                     try:
                         with open(rule_file) as f:
                             content = f.read()
-                            
-                       
+
                         title = rule_file.stem.replace("_", " ").title()
-    
+
                         # Create rule dictionary
                         rule_dict = {
                             "title": title,
@@ -305,8 +304,8 @@ class YaraRuleUpdater:
                             "metadata": {
                                 "file_path": str(rule_file),
                                 "description": f"YARA rule for {title}",
-                                "title": title
-                            }
+                                "title": title,
+                            },
                         }
                         rules.append(rule_dict)
                         logger.debug(f"Loaded YARA rule: {title}")
@@ -325,24 +324,24 @@ class YaraRuleUpdater:
     async def _extract_and_save_license(self, rule_file: Path) -> None:
         """Extract license from rule file and save it."""
         try:
-            async with aiofiles.open(rule_file, 'r') as f:
+            async with aiofiles.open(rule_file, "r") as f:
                 content = await f.read()
 
             # Find the first occurrence of 'rule' or 'import' at the start of a line
-            pattern = re.compile(r'^(rule|import)', re.MULTILINE)
+            pattern = re.compile(r"^(rule|import)", re.MULTILINE)
             match = pattern.search(content)
-            
+
             if match:
-                license_text = content[:match.start()].strip()
-                
+                license_text = content[: match.start()].strip()
+
                 # Create licenses directory if it doesn't exist
-                license_dir = Path('licenses/yara')
+                license_dir = Path("licenses/yara")
                 license_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 # Save license
-                async with aiofiles.open(license_dir / 'yaraforge.txt', 'w') as f:
+                async with aiofiles.open(license_dir / "yaraforge.txt", "w") as f:
                     await f.write(license_text)
-                    
+
                 logger.info("YARA license extracted and saved successfully")
             else:
                 logger.warning("Could not find license text in YARA rules file")

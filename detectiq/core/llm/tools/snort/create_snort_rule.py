@@ -42,7 +42,7 @@ while avoiding false positives.
     snortdb: VectorStore
     k: int = 3
     verbose: bool = False
-    
+
     def _run(
         self,
         description: str,
@@ -68,7 +68,7 @@ while avoiding false positives.
 
             # Format similar rules context
             context_text = "\n".join(doc.page_content for doc in similar_rules)
-            
+
             template = """You are an expert network security analyst specializing in Snort rule creation.
 
 Given the following description and context, create an effective Snort rule that detects malicious network traffic while minimizing false positives.
@@ -192,19 +192,19 @@ You MUST provide your response in the following format, including the '=== <sect
                 if not agent_output.strip():
                     logger.warning("Empty agent output generated")
                     raise ValueError("Empty analysis sections in response")
-                
+
                 # Basic validation of rule structure
-                if not re.match(r'^(alert|drop|reject|pass)\s+(tcp|udp|icmp|ip|http|ftp)', rule_text):
+                if not re.match(r"^(alert|drop|reject|pass)\s+(tcp|udp|icmp|ip|http|ftp)", rule_text):
                     raise ValueError("Invalid Snort rule header format")
-                
-                if '(' not in rule_text or ')' not in rule_text:
+
+                if "(" not in rule_text or ")" not in rule_text:
                     raise ValueError("Missing rule options section")
-                
+
                 # Extract metadata
                 msg_match = re.search(r'msg:"([^"]+)"', rule_text)
                 title = msg_match.group(1) if msg_match else "Untitled Rule"
                 rule_description = rule_description.group(1).strip() if rule_description else "No description provided."
-                
+
                 # Determine severity based on classtype or metadata
                 severity = "medium"  # Default
                 if "classtype:high" in rule_text or "impact_flag red" in rule_text:
@@ -217,7 +217,7 @@ You MUST provide your response in the following format, including the '=== <sect
                     "agent_output": agent_output,
                     "title": title,
                     "severity": severity,
-                    "description": rule_description
+                    "description": rule_description,
                 }
 
             except Exception as e:

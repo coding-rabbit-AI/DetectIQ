@@ -4,8 +4,8 @@ from pathlib import Path
 import environ
 from django.core.exceptions import ImproperlyConfigured
 
-from detectiq.globals import DEFAULT_DIRS
 from detectiq.core.utils.logging import get_logger
+from detectiq.globals import DEFAULT_DIRS
 
 logger = get_logger(__name__)
 

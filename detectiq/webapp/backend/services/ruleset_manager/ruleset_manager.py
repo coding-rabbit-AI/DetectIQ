@@ -103,14 +103,10 @@ class RulesetManager:
         """Store rules in the database."""
         try:
             logger.info(f"Storing {len(rules)} {rule_type} rules in database")
-            
+
             # Define source mapping
-            source_mapping = {
-                'sigma': 'SigmaHQ',
-                'yara': 'YARA-Forge',
-                'snort': 'Snort3 Community'
-            }
-            
+            source_mapping = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
+
             formatted_rules = []
 
             for i, rule in enumerate(rules):
@@ -133,7 +129,11 @@ class RulesetManager:
 
                     # Extract title based on rule type
                     if rule_type == "yara":
-                        title = rule["metadata"].get("rule_name") or rule["metadata"].get("title") or rule.get("title", f"Untitled_{rule_type}_Rule_{i}")
+                        title = (
+                            rule["metadata"].get("rule_name")
+                            or rule["metadata"].get("title")
+                            or rule.get("title", f"Untitled_{rule_type}_Rule_{i}")
+                        )
                     else:
                         title = rule["metadata"].get("title", f"Untitled_{rule_type}_Rule_{i}")
 
@@ -146,7 +146,7 @@ class RulesetManager:
                         "enabled": True,
                         "description": rule["metadata"].get("description", ""),
                         "metadata": rule.get("metadata", {}),
-                        "source": source_mapping.get(rule_type, 'DetectIQ')
+                        "source": source_mapping.get(rule_type, "DetectIQ"),
                     }
 
                     # Debug log the formatted rule

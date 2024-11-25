@@ -17,11 +17,28 @@ import { rulesApi } from '@/api/client';
 import { INTEGRATION_LABELS, INTEGRATIONS } from '@/constants/rules';
 import { IntegrationConfig } from '@/types/settings';
 import Notification from '@/components/common/Notification';
+import { styled } from '@mui/material/styles';
 
 interface RuleDeployButtonProps {
   ruleId: string | number;
   onSuccess?: (integration: string) => void;
 }
+
+const StyledMenu = styled(Menu)(({ theme }) => ({
+  '& .MuiPaper-root': {
+    borderRadius: theme.shape.borderRadius,
+    backgroundColor: theme.palette.background.paper,
+    boxShadow: theme.shadows[3],
+    minWidth: 200,
+  },
+}));
+
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+  padding: theme.spacing(1.5, 2),
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+  },
+}));
 
 export default function RuleDeployButton({ ruleId, onSuccess }: RuleDeployButtonProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -118,21 +135,29 @@ export default function RuleDeployButton({ ruleId, onSuccess }: RuleDeployButton
         {deploying ? <CircularProgress size={24} /> : 'Deploy'}
       </Button>
       
-      <Menu
+      <StyledMenu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
         onClick={(e) => e.stopPropagation()}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
       >
         {enabledIntegrations.map((integration) => (
-          <MenuItem 
+          <StyledMenuItem 
             key={integration}
             onClick={() => handleDeploy(integration)}
           >
             {getIntegrationLabel(integration)}
-          </MenuItem>
+          </StyledMenuItem>
         ))}
-      </Menu>
+      </StyledMenu>
 
       <Dialog 
         open={Boolean(error)} 

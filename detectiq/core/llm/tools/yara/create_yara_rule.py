@@ -283,7 +283,7 @@ All strings that are defined in the strings section MUST be used in the conditio
                     if severity_num <= 20:
                         severity = "information"
                     elif severity_num <= 40:
-                        severity = "low" 
+                        severity = "low"
                     elif severity_num <= 60:
                         severity = "medium"
                     elif severity_num <= 80:

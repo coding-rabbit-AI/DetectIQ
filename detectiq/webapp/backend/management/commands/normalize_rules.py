@@ -26,11 +26,7 @@ class Command(BaseCommand):
         updated_count = 0
         error_count = 0
 
-        source_mapping = {
-            'sigma': 'SigmaHQ',
-            'yara': 'YARA-Forge',
-            'snort': 'Snort3 Community'
-        }
+        source_mapping = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
 
         with transaction.atomic():
             # Get all rules
@@ -42,17 +38,17 @@ class Command(BaseCommand):
             for rule in rules:
                 try:
                     updates_made = False
-                    
+
                     # Source normalization
                     if not rule.source:
-                        new_source = source_mapping.get(rule.type.lower(), 'DetectIQ')
+                        new_source = source_mapping.get(rule.type.lower(), "DetectIQ")
                         if not dry_run:
                             rule.source = new_source
                             updates_made = True
                             self.stdout.write(f"Rule '{rule.title}': Added source -> {new_source}")
 
                     # Severity normalization (only for Sigma rules)
-                    if rule.type.lower() == 'sigma':
+                    if rule.type.lower() == "sigma":
                         yaml_content = yaml.safe_load(rule.content)
                         if yaml_content:
                             yaml_severity = yaml_content.get("level", "medium")
@@ -63,7 +59,7 @@ class Command(BaseCommand):
                                     rule.severity = new_severity
                                     updates_made = True
                                 self.stdout.write(f"Rule '{rule.title}': {rule.severity} -> {new_severity}")
-                    
+
                     if updates_made and not dry_run:
                         rule.save()
                         updated_count += 1

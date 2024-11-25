@@ -39,18 +39,14 @@ class StoredRuleSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # Set source based on rule type if not provided
-        if 'source' not in validated_data:
-            rule_type = validated_data.get('type')
-            source_mapping = {
-                'sigma': 'SigmaHQ',
-                'yara': 'YARA-Forge',
-                'snort': 'Snort3 Community'
-            }
+        if "source" not in validated_data:
+            rule_type = validated_data.get("type")
+            source_mapping = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
             # Default to DetectIQ for AI-generated rules
-            validated_data['source'] = source_mapping.get(rule_type, 'DetectIQ')
-            
+            validated_data["source"] = source_mapping.get(rule_type, "DetectIQ")
+
             # If this is an AI-generated rule (check metadata or other indicators)
-            if validated_data.get('metadata', {}).get('ai_generated', False):
-                validated_data['source'] = 'DetectIQ'
+            if validated_data.get("metadata", {}).get("ai_generated", False):
+                validated_data["source"] = "DetectIQ"
 
         return super().create(validated_data)

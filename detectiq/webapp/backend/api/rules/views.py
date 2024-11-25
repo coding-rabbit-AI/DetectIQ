@@ -129,25 +129,21 @@ class RuleViewSet(viewsets.ModelViewSet):
         kwargs["partial"] = True
         return super().partial_update(request, *args, **kwargs)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def create_rule(self, request):
         try:
             # Extract data from request
             data = request.data
-            
+
             # Set source based on rule type
-            rule_type = data.get('type', '').lower()
-            source_mapping = {
-                'sigma': 'SigmaHQ',
-                'yara': 'YARA-Forge',
-                'snort': 'Snort3 Community'
-            }
-            
+            rule_type = data.get("type", "").lower()
+            source_mapping = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
+
             # Set source based on whether it's AI-generated or based on rule type
-            if data.get('metadata', {}).get('ai_generated', False):
-                data['source'] = 'DetectIQ'
+            if data.get("metadata", {}).get("ai_generated", False):
+                data["source"] = "DetectIQ"
             else:
-                data['source'] = source_mapping.get(rule_type, 'DetectIQ')
+                data["source"] = source_mapping.get(rule_type, "DetectIQ")
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -156,10 +152,7 @@ class RuleViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error(f"Error creating rule: {str(e)}")
-            return Response(
-                {"error": "Failed to create rule", "detail": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Failed to create rule", "detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SigmaRuleViewSet(RuleViewSet):

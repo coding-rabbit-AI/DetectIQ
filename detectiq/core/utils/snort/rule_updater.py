@@ -30,23 +30,23 @@ class SnortRuleUpdater:
         """Extract and save license files from Snort rules tarball."""
         try:
             # Create licenses directory if it doesn't exist
-            license_dir = Path('licenses/snort')
+            license_dir = Path("licenses/snort")
             license_dir.mkdir(parents=True, exist_ok=True)
 
             # List of license files to extract with their new names
             license_files = {
-                'snort3-community-rules/LICENSE': 'LICENSE.txt',
-                'snort3-community-rules/AUTHORS': 'AUTHORS.txt',
-                'snort3-community-rules/VRT-License.txt': 'VRT-License.txt'
+                "snort3-community-rules/LICENSE": "LICENSE.txt",
+                "snort3-community-rules/AUTHORS": "AUTHORS.txt",
+                "snort3-community-rules/VRT-License.txt": "VRT-License.txt",
             }
 
             for src_path, dest_name in license_files.items():
                 try:
                     license_file = tar_file.extractfile(src_path)
                     if license_file:
-                        content = license_file.read().decode('utf-8')
+                        content = license_file.read().decode("utf-8")
                         dest_path = license_dir / dest_name
-                        async with aiofiles.open(dest_path, 'w') as f:
+                        async with aiofiles.open(dest_path, "w") as f:
                             await f.write(content)
                         logger.info(f"Saved {dest_name} to licenses/snort/")
                     else:
@@ -69,15 +69,15 @@ class SnortRuleUpdater:
                     async with session.get(self.SNORT_RULES_URL) as response:
                         response.raise_for_status()
                         content = await response.read()
-                        
+
                         # Save the downloaded content
                         self.rules_file.write_bytes(content)
 
             # Extract rules and licenses
-            with tarfile.open(self.rules_file, 'r:gz') as tar:
+            with tarfile.open(self.rules_file, "r:gz") as tar:
                 # Extract license files first
                 await self._extract_and_save_licenses(tar)
-                
+
                 # Extract rules
                 tar.extractall(path=self.rule_dir)
 
@@ -277,16 +277,12 @@ class SnortRuleUpdater:
     async def _save_license_files(self, extracted_path: Path) -> None:
         """Save Snort license files to the licenses directory."""
         try:
-            license_dir = Path('licenses/snort')
+            license_dir = Path("licenses/snort")
             license_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # List of files to copy with their new names
-            license_files = {
-                'LICENSE': 'LICENSE.txt',
-                'AUTHORS': 'AUTHORS.txt',
-                'VRT-License': 'VRT-License.txt'
-            }
-            
+            license_files = {"LICENSE": "LICENSE.txt", "AUTHORS": "AUTHORS.txt", "VRT-License": "VRT-License.txt"}
+
             for src_name, dst_name in license_files.items():
                 src_path = extracted_path / src_name
                 if src_path.exists():
@@ -294,6 +290,6 @@ class SnortRuleUpdater:
                     logger.info(f"Copied {src_name} to licenses/snort/{dst_name}")
                 else:
                     logger.warning(f"License file not found: {src_name}")
-                    
+
         except Exception as e:
             logger.error(f"Failed to save Snort license files: {e}")

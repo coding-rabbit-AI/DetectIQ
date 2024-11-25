@@ -68,14 +68,14 @@ def async_action(detail=False, methods=None, url_path=None, **kwargs):
                 # Set new event loop for this thread
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                
+
                 # Run the async function and get result
                 result = async_to_sync(func)(viewset, request, *args, **kwargs)
-                
+
                 # Clean up
                 loop.close()
                 return result
-                
+
             except Exception as e:
                 logger.error(f"Error in async action: {str(e)}")
                 raise
@@ -131,12 +131,12 @@ class RuleViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(**filters)
 
             # Apply search if present
-            search_query = self.request.GET.get('search')
+            search_query = self.request.GET.get("search")
             if search_query:
                 queryset = queryset.filter(
-                    Q(title__icontains=search_query) |
-                    Q(description__icontains=search_query) |
-                    Q(content__icontains=search_query)
+                    Q(title__icontains=search_query)
+                    | Q(description__icontains=search_query)
+                    | Q(content__icontains=search_query)
                 )
 
             # Apply enabled filter separately since it needs boolean conversion
@@ -158,10 +158,10 @@ class RuleViewSet(viewsets.ModelViewSet):
 
         # Handle all filter parameters
         filter_fields = {
-            "type": "type__iexact", 
-            "severity": "severity__iexact", 
+            "type": "type__iexact",
+            "severity": "severity__iexact",
             "integration": "integration__iexact",
-            "source": "source__iexact"  # Add source filter
+            "source": "source__iexact",  # Add source filter
         }
 
         for param, filter_name in filter_fields.items():
@@ -230,39 +230,38 @@ class RuleViewSet(viewsets.ModelViewSet):
             logger.debug(f"Request FILES: {request.FILES}")
             logger.debug(f"Request data: {request.data}")
             logger.debug(f"Request content type: {request.content_type}")
-            
+
             # Properly type request.data
             if isinstance(request.data, QueryDict):
                 data = dict(request.data)
-                data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v 
-                       for k, v in data.items()}
+                data = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in data.items()}
             else:
                 data = cast(Dict[str, Any], request.data)
 
             description = str(data.get("description", ""))
             rule_type = data.get("type", "sigma")  # Note: changed from rule_type to type to match frontend
-            
+
             # Check both request.FILES and request.data for the file
             uploaded_file = None
             if request.FILES:
-                uploaded_file = request.FILES.get('file')
-            elif isinstance(data.get('file'), UploadedFile):
-                uploaded_file = data['file']
-                
+                uploaded_file = request.FILES.get("file")  # type: ignore
+            elif isinstance(data.get("file"), UploadedFile):
+                uploaded_file = data["file"]
+
             logger.debug(f"Processed data: description={description}, rule_type={rule_type}, file={uploaded_file}")
 
             # Only require description if no file is uploaded
             if not description and not uploaded_file:
-                return Response(
-                    {"error": "Either description or file is required"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "Either description or file is required"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Analyze file if provided
             file_analysis = None
             if uploaded_file:
                 try:
                     analyzer = FileAnalyzer() if rule_type != "snort" else PcapAnalyzer()
+                    if not isinstance(uploaded_file, UploadedFile):
+                        return Response({"error": "Invalid file upload"}, status=status.HTTP_400_BAD_REQUEST)
+
                     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                         for chunk in uploaded_file.chunks():
                             temp_file.write(chunk)
@@ -276,39 +275,31 @@ class RuleViewSet(viewsets.ModelViewSet):
                 except Exception as e:
                     logger.error(f"Error analyzing file: {e}")
                     return Response(
-                        {"error": f"File analysis failed: {str(e)}"}, 
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        {"error": f"File analysis failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
 
             # Initialize the appropriate LLM tool based on rule_type
             if rule_type == "sigma":
                 if not self.sigmadb:
-                    return Response(
-                        {"error": "Sigma vector store not initialized"}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    return Response({"error": "Sigma vector store not initialized"}, status=status.HTTP_400_BAD_REQUEST)
                 tool = CreateSigmaRuleTool(llm=self.llm, sigmadb=self.sigmadb, verbose=True)
                 result = await tool._arun(description)
             elif rule_type == "yara":
                 if not self.yaradb:
-                    return Response(
-                        {"error": "YARA vector store not initialized"}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    return Response({"error": "YARA vector store not initialized"}, status=status.HTTP_400_BAD_REQUEST)
                 tool = CreateYaraRuleTool(llm=self.llm, yaradb=self.yaradb, verbose=True)
                 result = await tool._arun(description, file_analysis=file_analysis, matching_rules=matching_rules)
             elif rule_type == "snort":
                 if not self.snortdb:
-                    return Response(
-                        {"error": "Snort vector store not initialized"}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    return Response({"error": "Snort vector store not initialized"}, status=status.HTTP_400_BAD_REQUEST)
                 tool = CreateSnortRuleTool(llm=self.llm, snortdb=self.snortdb, verbose=True)
                 result = await tool._arun(description, file_analysis=file_analysis)
             else:
+                return Response({"error": "Unsupported rule type"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not result:
                 return Response(
-                    {"error": "Unsupported rule type"}, 
-                    status=status.HTTP_400_BAD_REQUEST
+                    {"error": "Failed to generate rule content"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
             rule_data = {
@@ -339,10 +330,7 @@ class RuleViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             logger.error(f"Error creating rule with LLM: {e}")
-            return Response(
-                {"error": f"Failed to create rule: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"error": f"Failed to create rule: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @method_decorator(csrf_exempt)
     @async_action(detail=False, methods=["post"])
