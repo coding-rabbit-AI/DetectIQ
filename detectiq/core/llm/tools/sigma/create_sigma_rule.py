@@ -1,7 +1,7 @@
 import asyncio
 import re
 from datetime import datetime
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 import yaml
 from langchain.prompts import ChatPromptTemplate
@@ -10,7 +10,9 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.vectorstore import VectorStore
 from langchain.tools import BaseTool
-from pydantic import BaseModel
+from langchain_core.callbacks import BaseCallbackManager, Callbacks
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from detectiq.core.utils.logging import get_logger
 
@@ -18,30 +20,52 @@ from detectiq.core.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
+# Define BaseCache first, before any imports or other classes
+class BaseCache(BaseModel):
+    """Base cache class for tools."""
+
+    data: Dict[str, Any] = {}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 class CreateSigmaRuleInput(BaseModel):
     """Input for CreateSigmaRuleTool."""
 
     description: str
     rule_context: Optional[str] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+def _check_sigmadb(cls, v):
+    """Validate sigmadb has required methods."""
+    if v is None:
+        return None
+    if not hasattr(v, "as_retriever"):
+        raise ValueError("sigmadb must have 'as_retriever' method")
+    return v
 
 
 class CreateSigmaRuleTool(BaseTool):
     """Class for creating Sigma rules based on log analysis or description"""
 
     name: str = "create_sigma_rule"
+    description: str = """Use this tool to create Sigma rules based on either:
+        1. Log analysis results
+        2. A description of what you want to detect"""
     args_schema: Type[BaseModel] = CreateSigmaRuleInput
-    description: str = """
-Use this tool to create Sigma rules based on either:
-1. Log analysis results
-2. A description of what you want to detect
-
-The tool will generate appropriate Sigma rules to detect similar patterns
-while avoiding false positives.
-"""
     llm: BaseLanguageModel
-    sigmadb: VectorStore
+    sigmadb: Optional[VectorStore] = None
     k: int = 3
     verbose: bool = False
+    callback_manager: Optional[BaseCallbackManager] = None
+    callbacks: Optional[Callbacks] = None
+    cache: Optional[BaseCache] = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("sigmadb")
+    def validate_sigmadb(cls, v):
+        return _check_sigmadb(cls, v)
 
     async def _arun(
         self,
@@ -49,6 +73,12 @@ while avoiding false positives.
         rule_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         try:
+            if self.sigmadb is None:
+                raise ValueError("sigmadb is required but not initialized")
+
+            if not description:
+                raise ValueError("Description is required")
+
             # Get current date
             current_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -74,8 +104,8 @@ Additional Context:
 
 Ensure your Sigma rule includes:
 
-- A unique 'id' (UUID)
-- Clear 'title' and 'description'
+- A unique 'id' (UUID) (REQUIRED)
+- Clear 'title' and 'description' based on what you are detecting (REQUIRED)
 - Appropriate 'author', 'date', 'references', 'tags', and 'level'
 - Correct 'logsource' definition
 - Add authors of any rules used as context for rule creation
@@ -86,8 +116,8 @@ Ensure your Sigma rule includes:
 Example:
 
 ```yaml
-id: <unique UUID>
 title: <Title of the rule>
+id: <unique UUID>
 description: <Description of the rule>
 author: <DetectIQ, and any other authors>
 date: {current_date}
@@ -181,13 +211,16 @@ You MUST provide your response in the following format:
                 logger.warning("Empty agent output generated")
                 raise ValueError("Empty analysis sections in response")
 
+            # Add before YAML extraction
+            logger.debug(f"Raw rule content before extraction:\n{rule_content}")
+
             # Clean up the rule content - improved YAML extraction
             yaml_lines = []
             in_yaml = False
             for line in rule_content.split("\n"):
                 stripped_line = line.strip()
                 # Start capturing at title: or --- (YAML document start)
-                if stripped_line.startswith("id:") or stripped_line == "---":
+                if stripped_line.startswith("title:") or stripped_line == "---":
                     in_yaml = True
                 if in_yaml:
                     # Stop if we hit explanatory text or empty lines after YAML
@@ -199,40 +232,42 @@ You MUST provide your response in the following format:
 
             rule_content = "\n".join(yaml_lines).strip()
 
-            # Parse the YAML content to extract title and other fields
+            # Add after YAML extraction
+            logger.debug(f"Extracted YAML content:\n{rule_content}")
+
+            # Validate the extracted rule content
+            if not rule_content:
+                raise ValueError("Failed to extract rule content from response")
+
             try:
+                # Parse YAML to validate structure
                 rule_yaml = yaml.safe_load(rule_content)
                 if not rule_yaml or not isinstance(rule_yaml, dict):
-                    logger.warning("Invalid YAML structure, using fallback values")
-                    title = "Untitled Rule"
-                    severity = "medium"
-                    description = ""
-                else:
-                    title = rule_yaml.get("title", "Untitled Rule")
-                    severity = rule_yaml.get("level", "medium")
-                    description = rule_yaml.get("description", "")
-            except Exception as e:
-                logger.warning(f"Failed to parse YAML content: {e}")
-                title = "Untitled Rule"
-                severity = "medium"
-                description = ""
+                    raise ValueError("Invalid YAML structure in generated rule")
 
-            # Validate severity before returning
-            valid_severities = ["informational", "low", "medium", "high", "critical"]
-            severity = severity.lower()
-            if severity not in valid_severities:
-                severity = "medium"
+                # Ensure required fields are present
+                required_fields = ["title", "description", "detection"]
+                missing_fields = [field for field in required_fields if field not in rule_yaml]
+                if missing_fields:
+                    raise ValueError(f"Missing required fields in rule: {', '.join(missing_fields)}")
+
+            except yaml.YAMLError as e:
+                logger.error(f"YAML parsing error: {e}")
+                raise ValueError(f"Invalid YAML in generated rule: {str(e)}")
+
+            # Add after YAML parsing
+            logger.debug(f"Parsed YAML fields: {rule_yaml.keys()}")
 
             return {
                 "rule": rule_content,
                 "agent_output": agent_output,
-                "title": title,
-                "severity": severity,
-                "description": description,
+                "title": rule_yaml.get("title", "Untitled Rule"),
+                "severity": rule_yaml.get("level", "medium"),
+                "description": rule_yaml.get("description", ""),
             }
 
         except Exception as e:
-            logger.error(f"Error creating Sigma rule: {e}")
+            logger.error(f"Error in _arun: {str(e)}")
             raise
 
     def _run(
@@ -242,3 +277,7 @@ You MUST provide your response in the following format:
     ) -> Dict[str, Any]:
         """Synchronous run method required by BaseTool."""
         return asyncio.run(self._arun(description, rule_context))
+
+
+# Rebuild the model at module level after all classes are defined
+CreateSigmaRuleTool.model_rebuild()

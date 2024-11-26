@@ -44,6 +44,10 @@ OPENAI_API_KEY = env("OPENAI_API_KEY") or None
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
+# Session configuration
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",

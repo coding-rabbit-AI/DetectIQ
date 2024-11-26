@@ -22,6 +22,21 @@ const nextConfig = {
       }
     ];
   },
-}
+  // Increase timeouts
+  serverOptions: {
+    timeout: 600000, // 10 minutes
+    keepAliveTimeout: 610000, // Slightly longer than timeout
+    headersTimeout: 620000, // Slightly longer than keepAliveTimeout
+  },
+  // Increase webpack buffer
+  webpack: (config) => {
+    config.performance = {
+      ...config.performance,
+      maxAssetSize: 5000000,
+      maxEntrypointSize: 5000000,
+    };
+    return config;
+  },
+};
 
-module.exports = nextConfig 
+module.exports = nextConfig; 

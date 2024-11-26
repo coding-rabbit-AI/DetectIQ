@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
@@ -34,11 +34,12 @@ The input can be either a file path or file bytes.
 """
     llm: BaseLanguageModel
     verbose: bool = False
-    rule_dir: str = Field(default=DEFAULT_DIRS.YARA_RULE_DIR)
+    rule_dir: Union[str, Path] = Field(default=DEFAULT_DIRS.YARA_RULE_DIR)
     scanner: Optional[YaraScanner] = None
 
     def __init__(self, **data):
         super().__init__(**data)
+        self.rule_dir = str(self.rule_dir)
         self.scanner = YaraScanner(self.rule_dir)
 
     def _run(
@@ -55,6 +56,7 @@ The input can be either a file path or file bytes.
     ) -> str:
         """Scan a file with YARA rules."""
         if not self.scanner:
+            self.rule_dir = str(self.rule_dir)
             self.scanner = YaraScanner(self.rule_dir)
 
         matches = self.scanner.scan_file(file_path, file_bytes)

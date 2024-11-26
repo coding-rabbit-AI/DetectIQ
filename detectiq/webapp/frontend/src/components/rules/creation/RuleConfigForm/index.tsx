@@ -41,76 +41,78 @@ export default function RuleConfigForm({
   const acceptedFiles = ruleType === 'snort' ? '.pcap' : '*';
 
   return (
-    <Box>
-      <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>Rule Type</InputLabel>
-        <Select
-          value={ruleType}
-          label="Rule Type"
-          onChange={(e) => onRuleTypeChange(e.target.value as RuleType)}
-        >
-          {Object.entries(RULE_TYPE_LABELS).map(([key, value]) => (
-            <MenuItem key={key} value={key}>{value}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <TextField
-        label="Description"
-        multiline
-        rows={8}
-        value={description}
-        onChange={(e) => onDescriptionChange(e.target.value)}
-        fullWidth
-        sx={{ mb: 2 }}
-        placeholder="Describe what you want to detect..."
-      />
-
-      <Box sx={{ mb: 2 }}>
-        <input
-          accept={acceptedFiles}
-          style={{ display: 'none' }}
-          id="file-upload"
-          type="file"
-          onChange={onFileChange}
-          disabled={!canUploadFile}
-        />
-        <label htmlFor="file-upload">
-          <Button
-            variant="outlined"
-            component="span"
-            fullWidth
-            disabled={!canUploadFile || isLoading}
-            startIcon={<UploadFileIcon />}
+    <form onSubmit={onSubmit}>
+      <Box>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Rule Type</InputLabel>
+          <Select
+            value={ruleType}
+            label="Rule Type"
+            onChange={(e) => onRuleTypeChange(e.target.value as RuleType)}
           >
-            {canUploadFile 
-              ? ruleType === 'snort'
-                ? 'Upload PCAP File for Analysis'
-                : 'Upload File for Analysis'
-              : 'File Analysis Not Yet Available for Sigma Rules'}
-          </Button>
-        </label>
-        {file && (
-          <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-            Selected file: {file.name}
-          </Typography>
+            {Object.entries(RULE_TYPE_LABELS).map(([key, value]) => (
+              <MenuItem key={key} value={key}>{value}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <TextField
+          label="Description"
+          multiline
+          rows={8}
+          value={description}
+          onChange={(e) => onDescriptionChange(e.target.value)}
+          fullWidth
+          sx={{ mb: 2 }}
+          placeholder="Describe what you want to detect..."
+        />
+
+        <Box sx={{ mb: 2 }}>
+          <input
+            accept={acceptedFiles}
+            style={{ display: 'none' }}
+            id="file-upload"
+            type="file"
+            onChange={onFileChange}
+            disabled={!canUploadFile}
+          />
+          <label htmlFor="file-upload">
+            <Button
+              variant="outlined"
+              component="span"
+              fullWidth
+              disabled={!canUploadFile || isLoading}
+              startIcon={<UploadFileIcon />}
+            >
+              {canUploadFile 
+                ? ruleType === 'snort'
+                  ? 'Upload PCAP File for Analysis'
+                  : 'Upload File for Analysis'
+                : 'File Analysis Not Yet Available for Sigma Rules'}
+            </Button>
+          </label>
+          {file && (
+            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+              Selected file: {file.name}
+            </Typography>
+          )}
+        </Box>
+
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={isLoading || (!description && !file)}
+          fullWidth
+        >
+          {isLoading ? <CircularProgress size={24} /> : 'Create Rule'}
+        </Button>
+
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
         )}
       </Box>
-
-      <Button
-        variant="contained"
-        onClick={onSubmit}
-        disabled={isLoading || (!description && !file)}
-        fullWidth
-      >
-        {isLoading ? <CircularProgress size={24} /> : 'Create Rule'}
-      </Button>
-
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      )}
-    </Box>
+    </form>
   );
 } 

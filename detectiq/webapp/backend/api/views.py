@@ -270,7 +270,7 @@ class RuleViewSet(viewsets.ModelViewSet):
                     analysis = await analyzer.analyze_file(Path(temp_path))
                     if rule_type == "yara":
                         matching_rules = YaraScanner(rule_dir=str(DEFAULT_DIRS.YARA_RULE_DIR)).scan_file(temp_path)
-                        file_analysis = analysis
+                    file_analysis = analysis
                     Path(temp_path).unlink(missing_ok=True)
                 except Exception as e:
                     logger.error(f"Error analyzing file: {e}")

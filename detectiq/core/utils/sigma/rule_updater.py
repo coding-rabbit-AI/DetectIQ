@@ -2,12 +2,12 @@ import os
 import shutil
 import zipfile
 from datetime import datetime
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
-import yaml
+from ruamel.yaml import YAML
 
 from detectiq.core.utils.logging import get_logger
 from detectiq.globals import DEFAULT_DIRS
@@ -47,6 +47,12 @@ class SigmaRuleUpdater:
         self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
 
         self.installed_version = None
+
+        # Initialize YAML parser with roundtrip mode
+        self.yaml = YAML()
+        self.yaml.preserve_quotes = True
+        self.yaml.indent(mapping=2, sequence=4, offset=2)
+        self.yaml.width = 4096  # Prevent line wrapping
 
     async def check_for_updates(self) -> Tuple[bool, Optional[str]]:
         """Check if updates are available."""
@@ -114,9 +120,8 @@ class SigmaRuleUpdater:
             raise RuntimeError(f"Failed to update rules: {str(e)}")
 
     async def _save_individual_rules(self) -> None:
-        """Parse and save individual rules."""
+        """Parse and save individual rules with preserved ordering."""
         try:
-            # Ensure individual rules directory exists
             self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
 
             # Process each YAML file
@@ -124,7 +129,7 @@ class SigmaRuleUpdater:
                 if rule_file.is_file():
                     try:
                         with open(rule_file) as f:
-                            rule_data = yaml.safe_load(f)
+                            rule_data = self.yaml.load(f)
 
                             # Skip non-rule files
                             if not isinstance(rule_data, dict) or "detection" not in rule_data:
@@ -135,8 +140,9 @@ class SigmaRuleUpdater:
                             if rule_name:
                                 output_path = self.individual_rules_dir / f"{rule_name}.yml"
                                 output_path.parent.mkdir(parents=True, exist_ok=True)
+                                
                                 with open(output_path, "w") as out_f:
-                                    yaml.dump(rule_data, out_f, default_flow_style=False)
+                                    self.yaml.dump(rule_data, out_f)
 
                     except Exception as e:
                         logger.warning(f"Failed to process rule file {rule_file}: {e}")
@@ -148,20 +154,18 @@ class SigmaRuleUpdater:
             raise RuntimeError(f"Failed to save individual rules: {str(e)}")
 
     async def load_rules(self) -> List[Dict[str, Any]]:
-        """Load rules for vectorstore creation."""
+        """Load rules for vectorstore creation with preserved ordering."""
         rules = []
 
         try:
-            # Ensure individual rules directory exists
             if not self.individual_rules_dir.exists():
                 logger.warning("Individual rules directory does not exist")
                 return rules
 
-            # Process each YAML file in individual rules directory
             for rule_file in self.individual_rules_dir.glob("*.yml"):
                 try:
                     with open(rule_file) as f:
-                        rule_data = yaml.safe_load(f)
+                        rule_data = self.yaml.load(f)
 
                         # Skip non-rule files
                         if not isinstance(rule_data, dict) or "detection" not in rule_data:
@@ -179,18 +183,24 @@ class SigmaRuleUpdater:
                             "version": self.installed_version,
                         }
 
-                        # Add tags if present
                         if "tags" in rule_data:
                             metadata["tags"] = rule_data["tags"]
 
-                        # Add logsource information
                         if "logsource" in rule_data:
                             metadata["logsource"] = rule_data["logsource"]
 
                         severity = rule_data.get("level", "medium")
 
-                        # Add the full rule content
-                        rules.append({"content": yaml.dump(rule_data, default_flow_style=True), "metadata": metadata, "severity": severity})
+                        # Convert to string using ruamel.yaml
+                        string_buffer = StringIO()
+                        self.yaml.dump(rule_data, string_buffer)
+                        rule_content = string_buffer.getvalue()
+
+                        rules.append({
+                            "content": rule_content,
+                            "metadata": metadata,
+                            "severity": severity
+                        })
 
                 except Exception as e:
                     logger.warning(f"Failed to process rule {rule_file}: {e}")

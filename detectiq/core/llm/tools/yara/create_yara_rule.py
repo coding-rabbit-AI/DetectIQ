@@ -10,7 +10,7 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.vectorstore import VectorStore
 from langchain.tools import BaseTool
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from detectiq.core.utils.logging import get_logger
 
@@ -24,6 +24,7 @@ class CreateYaraRuleInput(BaseModel):
     rule_context: Optional[str] = None
     file_analysis: Optional[str] = None
     matching_rules: Optional[List[Dict]] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class CreateYaraRuleTool(BaseTool):
@@ -45,6 +46,7 @@ or patterns while avoiding false positives.
     yaradb: VectorStore
     k: int = 3
     verbose: bool = False
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def _run(
         self,

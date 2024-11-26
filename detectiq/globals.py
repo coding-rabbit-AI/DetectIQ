@@ -24,9 +24,10 @@ class DEFAULT_DIRS:
     DATA_DIR = get_env_path("DETECTIQ_DATA_DIR", str(BASE_DIR / "data"))
 
     # Rule directories
-    YARA_RULE_DIR = get_env_path("DETECTIQ_YARA_RULE_DIR", str(DATA_DIR / "rules" / "yara"))
-    SIGMA_RULE_DIR = get_env_path("DETECTIQ_SIGMA_RULE_DIR", str(DATA_DIR / "rules" / "sigma"))
-    SNORT_RULE_DIR = get_env_path("DETECTIQ_SNORT_RULE_DIR", str(DATA_DIR / "rules" / "snort"))
+    RULE_DIR = get_env_path("DETECTIQ_RULE_DIR", str(DATA_DIR / "rules"))
+    YARA_RULE_DIR = get_env_path("DETECTIQ_YARA_RULE_DIR", str(RULE_DIR / "yara"))
+    SIGMA_RULE_DIR = get_env_path("DETECTIQ_SIGMA_RULE_DIR", str(RULE_DIR / "sigma"))
+    SNORT_RULE_DIR = get_env_path("DETECTIQ_SNORT_RULE_DIR", str(RULE_DIR / "snort"))
 
     # Vector store directories
     VECTOR_STORE_DIR = get_env_path("DETECTIQ_VECTOR_STORE_DIR", str(DATA_DIR / "vector_stores"))

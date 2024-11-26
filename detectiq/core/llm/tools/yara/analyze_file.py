@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools import BaseTool
@@ -31,11 +31,12 @@ class AnalyzeFileTool(BaseTool):
     args_schema: type[BaseModel] = AnalyzeFileInput
     llm: BaseLanguageModel
     analyzer: FileAnalyzer = Field(default_factory=FileAnalyzer)
-    rule_dir: str = Field(default=DEFAULT_DIRS.YARA_RULE_DIR)
+    rule_dir: Union[str, Path] = Field(default=DEFAULT_DIRS.YARA_RULE_DIR)
     scanner: Optional[YaraScanner] = None
 
     def __init__(self, **data):
         super().__init__(**data)
+        self.rule_dir = str(self.rule_dir)
         try:
             self.scanner = YaraScanner(self.rule_dir)
         except Exception as e:

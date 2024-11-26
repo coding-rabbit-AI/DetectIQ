@@ -10,7 +10,7 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.vectorstore import VectorStore
 from langchain.tools import BaseTool
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from detectiq.core.utils.logging import get_logger
 
@@ -23,6 +23,7 @@ class CreateSnortRuleInput(BaseModel):
 
     description: str
     rule_context: Optional[str] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class CreateSnortRuleTool(BaseTool):
@@ -42,6 +43,7 @@ while avoiding false positives.
     snortdb: VectorStore
     k: int = 3
     verbose: bool = False
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def _run(
         self,
@@ -59,12 +61,14 @@ while avoiding false positives.
         file_analysis: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         try:
+            execution_id = id(description)  # Get unique execution identifier
+            logger.info(f"Starting Snort rule creation with execution ID: {execution_id}")
             # Get current date
             current_date = datetime.now().strftime("%Y-%m-%d")
 
             # Get similar rules silently
             retriever = self.snortdb.as_retriever(search_kwargs={"k": self.k})
-            similar_rules = await retriever.ainvoke(description)
+            similar_rules = await retriever.ainvoke(description+ " " + str(file_analysis) if file_analysis else description)
 
             # Format similar rules context
             context_text = "\n".join(doc.page_content for doc in similar_rules)

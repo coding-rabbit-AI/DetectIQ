@@ -8,6 +8,8 @@ from django.contrib.auth.models import User
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, SecretStr
 
+from detectiq.globals import DEFAULT_DIRS
+
 
 class IntegrationCredentials(BaseModel):
     """Base integration credentials model."""
@@ -68,8 +70,14 @@ class DetectIQSettings(BaseModel):
     """Main settings model."""
 
     openai_api_key: str = Field(default="")
-    rule_dir: Path = Field(default=Path("data/rules"))
-    vector_store_dir: Path = Field(default=Path("data/vectorstore"))
+    rule_dir: Path = Field(default=DEFAULT_DIRS.RULE_DIR)
+    sigma_rule_dir: Path = Field(default=DEFAULT_DIRS.SIGMA_RULE_DIR)
+    snort_rule_dir: Path = Field(default=DEFAULT_DIRS.SNORT_RULE_DIR)
+    yara_rule_dir: Path = Field(default=DEFAULT_DIRS.YARA_RULE_DIR)
+    vector_store_dir: Path = Field(default=DEFAULT_DIRS.VECTOR_STORE_DIR)
+    sigma_vector_store_dir: Path = Field(default=DEFAULT_DIRS.SIGMA_VECTOR_STORE_DIR)
+    snort_vector_store_dir: Path = Field(default=DEFAULT_DIRS.SNORT_VECTOR_STORE_DIR)
+    yara_vector_store_dir: Path = Field(default=DEFAULT_DIRS.YARA_VECTOR_STORE_DIR)
     log_level: str = Field(default="INFO")
     model: str = Field(default="gpt-4o")
 
