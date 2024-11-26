@@ -187,12 +187,10 @@ class SigmaRuleUpdater:
                         if "logsource" in rule_data:
                             metadata["logsource"] = rule_data["logsource"]
 
-                        # Add detection details
-                        if "detection" in rule_data:
-                            metadata["detection"] = rule_data["detection"]
+                        severity = rule_data.get("level", "medium")
 
                         # Add the full rule content
-                        rules.append({"content": yaml.dump(rule_data, default_flow_style=False), "metadata": metadata})
+                        rules.append({"content": yaml.dump(rule_data, default_flow_style=True), "metadata": metadata, "severity": severity})
 
                 except Exception as e:
                     logger.warning(f"Failed to process rule {rule_file}: {e}")
