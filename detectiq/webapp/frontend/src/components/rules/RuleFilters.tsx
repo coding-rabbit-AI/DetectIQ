@@ -65,23 +65,37 @@ export default function RuleFilters() {
   };
 
   return (
-    <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box 
+      sx={{ 
+        mb: 3,
+        p: 2,
+        borderRadius: 1,
+        bgcolor: 'background.paper',
+        boxShadow: 1,
+      }}
+    >
       <TextField
         fullWidth
+        size="small"
         variant="outlined"
         placeholder="Search rules..."
         value={searchValue}
         onChange={handleSearchChange}
+        sx={{ mb: 2 }}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon />
+              <SearchIcon sx={{ color: 'text.secondary' }} />
             </InputAdornment>
           ),
         }}
       />
       
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        gap: 2, 
+        flexWrap: 'wrap',
+      }}>
         <FormControl sx={{ minWidth: 120 }}>
           <InputLabel>Integration</InputLabel>
           <Select

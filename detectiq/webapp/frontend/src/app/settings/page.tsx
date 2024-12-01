@@ -16,7 +16,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { rulesApi } from '@/api/client';
+import { rulesApi, settingsApi } from '@/api/client';
 import { Settings, IntegrationCredentials } from '@/types/settings';
 import Notification from '@/components/common/Notification';
 import PageLayout from '@/components/layout/PageLayout';
@@ -80,7 +80,7 @@ export default function SettingsPage() {
 
   const { data: savedSettings, isLoading } = useQuery({
     queryKey: ['settings'],
-    queryFn: rulesApi.getSettings,
+    queryFn: settingsApi.getSettings,
   });
 
   useEffect(() => {

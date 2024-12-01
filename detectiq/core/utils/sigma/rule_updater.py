@@ -140,7 +140,7 @@ class SigmaRuleUpdater:
                             if rule_name:
                                 output_path = self.individual_rules_dir / f"{rule_name}.yml"
                                 output_path.parent.mkdir(parents=True, exist_ok=True)
-                                
+
                                 with open(output_path, "w") as out_f:
                                     self.yaml.dump(rule_data, out_f)
 
@@ -196,11 +196,7 @@ class SigmaRuleUpdater:
                         self.yaml.dump(rule_data, string_buffer)
                         rule_content = string_buffer.getvalue()
 
-                        rules.append({
-                            "content": rule_content,
-                            "metadata": metadata,
-                            "severity": severity
-                        })
+                        rules.append({"content": rule_content, "metadata": metadata, "severity": severity})
 
                 except Exception as e:
                     logger.warning(f"Failed to process rule {rule_file}: {e}")

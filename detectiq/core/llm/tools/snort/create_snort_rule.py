@@ -68,7 +68,9 @@ while avoiding false positives.
 
             # Get similar rules silently
             retriever = self.snortdb.as_retriever(search_kwargs={"k": self.k})
-            similar_rules = await retriever.ainvoke(description+ " " + str(file_analysis) if file_analysis else description)
+            similar_rules = await retriever.ainvoke(
+                description + " " + str(file_analysis) if file_analysis else description
+            )
 
             # Format similar rules context
             context_text = "\n".join(doc.page_content for doc in similar_rules)

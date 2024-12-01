@@ -15,8 +15,19 @@ const apiClient = axios.create({
 
 export const settingsApi = {
   getSettings: async () => {
-    const response = await apiClient.get<Settings>('/settings/get_settings/');
-    return response.data;
+    try {
+      console.log('Fetching settings from:', '/api/settings/get_settings/');
+      const response = await apiClient.get<Settings>('/settings/get_settings/');
+      console.log('Settings response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response data:', error.response?.data);
+        console.error('Response status:', error.response?.status);
+      }
+      throw error;
+    }
   }
 };
 
@@ -60,11 +71,6 @@ export const rulesApi = {
 
   deleteRule: async (ruleId: string): Promise<void> => {
     await apiClient.delete(`/rules/${ruleId}/`);
-  },
-
-  getSettings: async (): Promise<Settings> => {
-    const response = await apiClient.get<Settings>('/settings/get_settings/');
-    return response.data;
   },
 
   updateSettings: async (settings: Partial<Settings>): Promise<Settings> => {

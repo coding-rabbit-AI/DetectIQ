@@ -124,7 +124,7 @@ class RulesetManager:
                         continue
 
                     # Extract and validate severity
-                    raw_severity = rule.get('severity') or rule["metadata"].get("severity", "medium")
+                    raw_severity = rule.get("severity") or rule["metadata"].get("severity", "medium")
                     validated_severity = self._validate_severity(raw_severity)
 
                     # Extract title based on rule type

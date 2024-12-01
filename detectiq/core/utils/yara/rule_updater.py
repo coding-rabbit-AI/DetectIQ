@@ -271,7 +271,6 @@ class YaraRuleUpdater:
                 metadata["severity"] = "medium"
         else:
             print()
-            
 
         # Set title from rule name if not in metadata
         if not metadata["title"] and "rule_name" in rule:
@@ -305,7 +304,7 @@ class YaraRuleUpdater:
                         parsed_rules = parser.parse_string(content)
                         if not parsed_rules:
                             continue
-                            
+
                         rule_data = parsed_rules[0]  # Should only be one rule per file
                         metadata = self._parse_rule_metadata(rule_data)
                         orig_metadata = rule_data.get("metadata", {})

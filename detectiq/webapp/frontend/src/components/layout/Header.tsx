@@ -1,41 +1,77 @@
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, useTheme } from '@mui/material';
 import Image from 'next/image';
 
 export default function Header() {
+  const theme = useTheme();
+  
   return (
     <Box 
       sx={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: 3,
-        width: '100%',
-        justifyContent: 'space-between',
-        py: 1
+        p: 1.5,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        background: 'transparent',
+        backdropFilter: 'blur(8px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: theme.zIndex.appBar,
+        transition: 'all 0.2s ease-in-out',
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '1px',
+          background: 'linear-gradient(90deg, transparent, rgba(144, 202, 249, 0.1), transparent)',
+        }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <Image
-          src="/icons/aiq_stacked_color.svg"
-          alt="AttackIQ Logo"
-          width={48}
-          height={48}
-          style={{
-            filter: 'drop-shadow(0 0 3px rgba(97, 84, 163, 0.3))'
-          }}
-        />
-        <Typography 
-          variant="h5" 
-          sx={{
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #6154a3, #8075b7)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            color: 'transparent',
-            textShadow: '0px 2px 4px rgba(0,0,0,0.1)',
-            letterSpacing: '-0.5px'
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          '&:hover': {
+            '& .logo': {
+              transform: 'scale(1.05)',
+            },
+            '& .text': {
+              letterSpacing: '0.8px',
+            }
+          }
+        }}
+      >
+        <Box 
+          className="logo"
+          sx={{ 
+            transition: 'transform 0.2s ease-in-out',
+            display: 'flex',
           }}
         >
-          Detect<span style={{ color: '#6154a3' }}>IQ</span>
+          <Image 
+            src="/icons/aiq_stacked_color.svg" 
+            alt="DetectIQ Logo" 
+            width={24} 
+            height={24} 
+            priority 
+          />
+        </Box>
+        <Typography 
+          variant="subtitle1"
+          className="text"
+          sx={{ 
+            fontWeight: 400,
+            letterSpacing: '0.5px',
+            transition: 'all 0.2s ease-in-out',
+            background: 'linear-gradient(45deg, #90caf9, #6154a3)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            opacity: 0.9,
+          }}
+        >
+          DetectIQ
         </Typography>
       </Box>
     </Box>

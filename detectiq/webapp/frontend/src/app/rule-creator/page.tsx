@@ -94,94 +94,99 @@ export default function RuleCreator() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
-          <RuleConfigForm
-            ruleType={ruleType}
-            description={description}
-            file={file}
-            isLoading={createRuleMutation.isPending}
-            error={error}
-            onRuleTypeChange={setRuleType}
-            onDescriptionChange={setDescription}
-            onFileChange={handleFileChange}
-            onSubmit={handleSubmit}
-          />
-        </Grid>
+    <PageLayout 
+      title="Rule Creator" 
+      subtitle="Create and analyze detection rules using AI assistance"
+    >
+      <Container maxWidth="xl">
+        <Grid container spacing={3}>
+          <Grid item xs={12} sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
+            <RuleConfigForm
+              ruleType={ruleType}
+              description={description}
+              file={file}
+              isLoading={createRuleMutation.isPending}
+              error={error}
+              onRuleTypeChange={setRuleType}
+              onDescriptionChange={setDescription}
+              onFileChange={handleFileChange}
+              onSubmit={handleSubmit}
+            />
+          </Grid>
 
-        {(generatedRule && !createRuleMutation.isPending) && (
-          <Grid item xs={12} sx={{ maxWidth: '1600px', mx: 'auto', width: '100%' }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card sx={{ 
-                  height: '600px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  backgroundColor: (theme) => theme.palette.background.paper,
-                  borderRadius: 2,
-                  boxShadow: (theme) => theme.shadows[2],
-                  overflow: 'hidden'
-                }}>
-                  <CardContent sx={{ 
-                    p: 3, 
-                    flexGrow: 1, 
-                    display: 'flex', 
+          {(generatedRule && !createRuleMutation.isPending) && (
+            <Grid item xs={12} sx={{ maxWidth: '1600px', mx: 'auto', width: '100%' }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ 
+                    height: '600px',
+                    display: 'flex',
                     flexDirection: 'column',
-                    height: '100%',
+                    backgroundColor: (theme) => theme.palette.background.paper,
+                    borderRadius: 2,
+                    boxShadow: (theme) => theme.shadows[2],
                     overflow: 'hidden'
                   }}>
-                    <Typography variant="h6" gutterBottom>
-                      Generated Rule
-                    </Typography>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <RulePreview
-                        content={generatedRule}
-                        title="Generated Rule"
-                        ruleType={ruleType}
-                        ruleId={ruleId}
-                        onUpdate={handleRuleUpdate}
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <Card sx={{ 
-                  height: '600px',
-                  backgroundColor: (theme) => theme.palette.background.paper,
-                  borderRadius: 2,
-                  boxShadow: (theme) => theme.shadows[2]
-                }}>
-                  <CardContent sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    p: 3
-                  }}>
-                    <Typography variant="h6" gutterBottom>
-                      Analysis
-                    </Typography>
-                    <Box sx={{
-                      flexGrow: 1,
-                      overflow: 'auto'
+                    <CardContent sx={{ 
+                      p: 3, 
+                      flexGrow: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      height: '100%',
+                      overflow: 'hidden'
                     }}>
-                      {agentOutput && <AgentAnalysisPanel output={agentOutput} />}
-                    </Box>
-                  </CardContent>
-                </Card>
+                      <Typography variant="h6" gutterBottom>
+                        Generated Rule
+                      </Typography>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <RulePreview
+                          content={generatedRule}
+                          title="Generated Rule"
+                          ruleType={ruleType}
+                          ruleId={ruleId}
+                          onUpdate={handleRuleUpdate}
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ 
+                    height: '600px',
+                    backgroundColor: (theme) => theme.palette.background.paper,
+                    borderRadius: 2,
+                    boxShadow: (theme) => theme.shadows[2]
+                  }}>
+                    <CardContent sx={{ 
+                      height: '100%', 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      p: 3
+                    }}>
+                      <Typography variant="h6" gutterBottom>
+                        Analysis
+                      </Typography>
+                      <Box sx={{
+                        flexGrow: 1,
+                        overflow: 'auto'
+                      }}>
+                        {agentOutput && <AgentAnalysisPanel output={agentOutput} />}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
               </Grid>
             </Grid>
-          </Grid>
-        )}
+          )}
 
-        {createRuleMutation.isPending && (
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <CircularProgress size={40} />
-          </Grid>
-        )}
-      </Grid>
-    </Container>
+          {createRuleMutation.isPending && (
+            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <CircularProgress size={40} />
+            </Grid>
+          )}
+        </Grid>
+      </Container>
+    </PageLayout>
   );
 } 

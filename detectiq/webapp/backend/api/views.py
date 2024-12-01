@@ -479,70 +479,30 @@ class SettingsViewSet(viewsets.ViewSet):
     """ViewSet for managing user settings."""
 
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]
+    basename = "settings"
 
-    @action(detail=False, methods=["GET"])
-    def get_settings(self, request):
+    @async_action(detail=False, methods=["GET"], url_path="get_settings")
+    async def get_settings(self, request):
         try:
-            # Get current settings
+            settings_manager = await get_settings(request.user)
             current_settings = settings_manager.settings
 
-            # Get integration settings with proper type checking
-            splunk_settings = current_settings.integrations.splunk
-            elastic_settings = current_settings.integrations.elastic
-            microsoft_xdr_settings = current_settings.integrations.microsoft_xdr
+            # Convert SecretStr to string or empty string
+            splunk_dict = current_settings.integrations.splunk.dict(exclude_none=True)
+            if "password" in splunk_dict and isinstance(splunk_dict["password"], SecretStr):
+                splunk_dict["password"] = splunk_dict["password"].get_secret_value()
 
-            # Convert to dict for response
             settings_dict = {
-                "openai_api_key": current_settings.openai_api_key,
-                "rule_directories": {
-                    "sigma": str(current_settings.rule_dir / "sigma"),
-                    "yara": str(current_settings.rule_dir / "yara"),
-                    "snort": str(current_settings.rule_dir / "snort"),
-                },
+                "openai_api_key": current_settings.openai_api_key or "",
+                "rule_directories": current_settings.rule_directories,
+                "vector_store_directories": current_settings.vector_store_directories,
+                "log_level": current_settings.log_level,
+                "model": current_settings.model,
                 "integrations": {
-                    "splunk": {
-                        "hostname": splunk_settings.hostname,
-                        "username": splunk_settings.username,
-                        "password": (
-                            "********"
-                            if splunk_settings.password and splunk_settings.password.get_secret_value()
-                            else ""
-                        ),  # Indicate password exists
-                        "app": splunk_settings.app,
-                        "owner": splunk_settings.owner,
-                        "verify_ssl": splunk_settings.verify_ssl,
-                        "enabled": splunk_settings.enabled,
-                    },
-                    "elastic": {
-                        "hostname": elastic_settings.hostname,
-                        "cloud_id": (
-                            elastic_settings.cloud_id if isinstance(elastic_settings, ElasticCredentials) else ""
-                        ),
-                        "api_key": (
-                            "********" if isinstance(elastic_settings.api_key, SecretStr) else ""
-                        ),  # Indicate API key exists
-                        "verify_ssl": elastic_settings.verify_ssl,
-                        "enabled": elastic_settings.enabled,
-                    },
-                    "microsoft_xdr": {
-                        "hostname": microsoft_xdr_settings.hostname,
-                        "tenant_id": (
-                            microsoft_xdr_settings.tenant_id
-                            if isinstance(microsoft_xdr_settings, MicrosoftXDRCredentials)
-                            else ""
-                        ),
-                        "client_id": (
-                            microsoft_xdr_settings.client_id
-                            if isinstance(microsoft_xdr_settings, MicrosoftXDRCredentials)
-                            else ""
-                        ),
-                        "client_secret": (
-                            "********" if isinstance(microsoft_xdr_settings.client_secret, SecretStr) else ""
-                        ),  # Indicate client secret exists
-                        "verify_ssl": microsoft_xdr_settings.verify_ssl,
-                        "enabled": microsoft_xdr_settings.enabled,
-                    },
+                    "splunk": splunk_dict,
+                    "elastic": current_settings.integrations.elastic.dict(exclude_none=True),
+                    "microsoft_xdr": current_settings.integrations.microsoft_xdr.dict(exclude_none=True),
                 },
             }
             return Response(settings_dict)

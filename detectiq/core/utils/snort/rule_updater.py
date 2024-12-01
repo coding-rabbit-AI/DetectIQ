@@ -114,16 +114,18 @@ class SnortRuleUpdater:
                             metadata = self._parse_rule_metadata(rule)
                             if not metadata:  # Skip invalid/incomplete rules
                                 continue
-                                
-                            rules.append({
-                                "content": rule,
-                                "metadata": {
-                                    "file_name": file.name,
-                                    "rule_type": "snort",
-                                    "path": str(file),
-                                    **metadata,
-                                },
-                            })
+
+                            rules.append(
+                                {
+                                    "content": rule,
+                                    "metadata": {
+                                        "file_name": file.name,
+                                        "rule_type": "snort",
+                                        "path": str(file),
+                                        **metadata,
+                                    },
+                                }
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to process rule: {rule[:100]}... Error: {e}")
                             continue
@@ -156,7 +158,7 @@ class SnortRuleUpdater:
                 category = parts[0].title()
                 name = parts[1]
                 return category, "", name
-        
+
         # If no category/subcategory format found
         return "", "", msg
 
@@ -184,11 +186,11 @@ class SnortRuleUpdater:
     def _parse_rule_metadata(self, rule_text: str) -> Dict[str, str]:
         """Parse metadata from a Snort rule."""
         # First check if rule has required components
-        header_parts = rule_text.split('(')[0].strip().split()
+        header_parts = rule_text.split("(")[0].strip().split()
         if len(header_parts) < 5:  # action proto src_ip src_port direction dst_ip dst_port
             logger.debug(f"Skipping incomplete rule: {rule_text[:100]}...")
             return {}  # Return empty dict to indicate invalid rule
-        
+
         metadata = {
             "severity": "medium",
             "description": "",
@@ -208,20 +210,20 @@ class SnortRuleUpdater:
             # Split header and options
             if "(" not in rule_text:
                 return metadata
-            
+
             header, options = rule_text.split("(", 1)
             options = options.strip().rstrip(")")
-            
+
             # Parse options
             current_option = ""
             in_quotes = False
             options_dict = {}
-            
+
             for char in options:
                 if char == '"':
                     in_quotes = not in_quotes
                     current_option += char
-                elif char == ';' and not in_quotes:
+                elif char == ";" and not in_quotes:
                     if ":" in current_option:
                         key, value = current_option.split(":", 1)
                         options_dict[key.strip()] = value.strip().strip('"')
@@ -234,41 +236,41 @@ class SnortRuleUpdater:
             # Extract key metadata
             if "msg" in options_dict:
                 msg = options_dict["msg"]
-                metadata.update({
-                    "msg": msg,
-                    "description": msg,
-                    "name": msg,
-                    "title": msg,
-                    "category": msg.split("-")[0].title() if "-" in msg.split()[0] else "",
-                    "subcategory": msg.split("-")[1].split()[0].title() if "-" in msg.split()[0] else "",
-                })
+                metadata.update(
+                    {
+                        "msg": msg,
+                        "description": msg,
+                        "name": msg,
+                        "title": msg,
+                        "category": msg.split("-")[0].title() if "-" in msg.split()[0] else "",
+                        "subcategory": msg.split("-")[1].split()[0].title() if "-" in msg.split()[0] else "",
+                    }
+                )
 
             if "sid" in options_dict:
                 metadata["sid"] = options_dict["sid"]
-            
+
             if "rev" in options_dict:
                 metadata["rev"] = options_dict["rev"]
-            
+
             if "gid" in options_dict:
                 metadata["gid"] = options_dict["gid"]
-            
+
             if "classtype" in options_dict:
                 metadata["classtype"] = options_dict["classtype"]
                 metadata["severity"] = self._get_severity_from_classtype(options_dict["classtype"])
-            
+
             if "reference" in options_dict:
                 metadata["reference"] = [r.strip() for r in options_dict["reference"].split(",")]
-            
+
             if "metadata" in options_dict:
                 metadata["metadata"] = dict(
-                    item.split(" ", 1) 
-                    for item in options_dict["metadata"].split(",") 
-                    if " " in item
+                    item.split(" ", 1) for item in options_dict["metadata"].split(",") if " " in item
                 )
                 # Check for impact_flag red in metadata
                 if metadata["metadata"].get("impact_flag") == "red":
                     metadata["severity"] = "critical"
-            
+
             # Fallback to classtype-based severity if not critical
             if metadata["severity"] != "critical" and "classtype" in options_dict:
                 metadata["severity"] = self._get_severity_from_classtype(options_dict["classtype"])
