@@ -8,26 +8,25 @@ import {
   Typography,
   TextField,
   Button,
-  Divider,
-  Alert,
   Grid,
   Switch,
   FormControlLabel,
   CircularProgress,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { rulesApi, settingsApi } from '@/api/client';
+import { settingsApi } from '@/api/client';
 import { Settings, IntegrationCredentials } from '@/types/settings';
 import Notification from '@/components/common/Notification';
 import PageLayout from '@/components/layout/PageLayout';
-
-interface TestResult {
-  success: boolean;
-  message: string;
-}
+import { Science as TestIcon, Save as SaveIcon } from '@mui/icons-material';
 
 interface TestResults {
-  [key: string]: TestResult | null;
+  [key: string]: {
+    success: boolean;
+    message: string;
+  };
 }
 
 export default function SettingsPage() {
@@ -89,12 +88,29 @@ export default function SettingsPage() {
     }
   }, [savedSettings]);
 
+  const handleUpdateIntegrationSetting = (
+    integration: string,
+    field: keyof IntegrationCredentials,
+    value: any
+  ) => {
+    setSettings({
+      ...settings,
+      integrations: {
+        ...settings.integrations,
+        [integration]: {
+          ...settings.integrations[integration as keyof typeof settings.integrations],
+          [field]: value,
+        },
+      },
+    });
+  };
+
   const handleClose = () => {
     setNotification({ ...notification, open: false });
   };
 
   const updateMutation = useMutation({
-    mutationFn: (newSettings: Settings) => rulesApi.updateSettings(newSettings),
+    mutationFn: settingsApi.updateSettings,
     onSuccess: () => {
       setNotification({
         message: 'Settings saved successfully',
@@ -112,7 +128,7 @@ export default function SettingsPage() {
   });
 
   const testIntegrationMutation = useMutation({
-    mutationFn: (integration: string) => rulesApi.testIntegration(integration),
+    mutationFn: settingsApi.testIntegration,
     onSuccess: (data, integration) => {
       setTestResults(prev => ({
         ...prev,
@@ -140,45 +156,12 @@ export default function SettingsPage() {
         type: 'error',
         open: true,
       });
-    }
+    },
   });
-
-  const handleUpdateIntegrationSetting = (
-    integration: string,
-    field: keyof IntegrationCredentials,
-    value: any
-  ) => {
-    setSettings({
-      ...settings,
-      integrations: {
-        ...settings.integrations,
-        [integration]: {
-          ...settings.integrations[integration as keyof typeof settings.integrations],
-          [field]: value,
-        },
-      },
-    });
-  };
 
   const handleSave = async () => {
     try {
-      const settingsToUpdate = JSON.parse(JSON.stringify(settings));
-      
-      // Filter out masked passwords for all integrations
-      Object.keys(settingsToUpdate.integrations).forEach(integration => {
-        const integrationSettings = settingsToUpdate.integrations[integration];
-        if (integrationSettings.password?.match(/^\*+$/)) {
-          delete integrationSettings.password;
-        }
-        if (integrationSettings.api_key?.match(/^\*+$/)) {
-          delete integrationSettings.api_key;
-        }
-        if (integrationSettings.client_secret?.match(/^\*+$/)) {
-          delete integrationSettings.client_secret;
-        }
-      });
-
-      await updateMutation.mutateAsync(settingsToUpdate);
+      await updateMutation.mutateAsync(settings);
     } catch (error) {
       console.error('Failed to save settings:', error);
     }
@@ -186,27 +169,6 @@ export default function SettingsPage() {
 
   const handleTestIntegration = async (integration: string) => {
     try {
-      // Create a copy of settings to modify
-      const settingsToUpdate = JSON.parse(JSON.stringify(settings));
-      
-      // Remove masked passwords before saving
-      if (settingsToUpdate.integrations[integration]) {
-        const integrationSettings = settingsToUpdate.integrations[integration];
-        // Check if password is all asterisks
-        if (integrationSettings.password?.match(/^\*+$/)) {
-          delete integrationSettings.password;
-        }
-        // Do the same for other sensitive fields if needed
-        if (integrationSettings.api_key?.match(/^\*+$/)) {
-          delete integrationSettings.api_key;
-        }
-        if (integrationSettings.client_secret?.match(/^\*+$/)) {
-          delete integrationSettings.client_secret;
-        }
-      }
-
-      // Save filtered settings then test connection
-      await updateMutation.mutateAsync(settingsToUpdate);
       await testIntegrationMutation.mutateAsync(integration);
     } catch (error) {
       console.error(`Failed to test ${integration} integration:`, error);
@@ -223,24 +185,23 @@ export default function SettingsPage() {
 
   return (
     <PageLayout title="Settings">
-      <Box sx={{ maxWidth: 'lg', mx: 'auto' }}>
+      <Box sx={{ maxWidth: 'lg', mx: 'auto', p: 3 }}>
         <Grid container spacing={3}>
           {/* API Keys */}
           <Grid item xs={12}>
-            <Card>
+            <Card elevation={2}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom color="primary">
                   API Keys
                 </Typography>
                 <TextField
                   label="OpenAI API Key"
                   type="password"
                   value={settings.openai_api_key}
-                  onChange={(e) =>
-                    setSettings({ ...settings, openai_api_key: e.target.value })
-                  }
+                  onChange={(e) => setSettings({ ...settings, openai_api_key: e.target.value })}
                   fullWidth
                   margin="normal"
+                  variant="outlined"
                 />
               </CardContent>
             </Card>
@@ -248,9 +209,9 @@ export default function SettingsPage() {
 
           {/* Rule Directories */}
           <Grid item xs={12}>
-            <Card>
+            <Card elevation={2}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom color="primary">
                   Rule Directories
                 </Typography>
                 <Grid container spacing={2}>
@@ -269,6 +230,7 @@ export default function SettingsPage() {
                           })
                         }
                         fullWidth
+                        variant="outlined"
                       />
                     </Grid>
                   ))}
@@ -279,196 +241,177 @@ export default function SettingsPage() {
 
           {/* Integrations */}
           <Grid item xs={12}>
-            <Card>
+            <Card elevation={2}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom color="primary">
                   Integrations
                 </Typography>
                 {Object.entries(settings.integrations).map(([name, config]) => (
-                  <Box key={name} sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                      {name.toUpperCase()}
-                    </Typography>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={config.enabled}
-                          onChange={(e) =>
-                            setSettings({
-                              ...settings,
-                              integrations: {
-                                ...settings.integrations,
-                                [name]: {
-                                  ...config,
-                                  enabled: e.target.checked,
-                                },
-                              },
-                            })
-                          }
-                        />
-                      }
-                      label="Enabled"
-                    />
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Hostname"
-                          value={config.hostname}
-                          onChange={(e) =>
-                            handleUpdateIntegrationSetting(name, 'hostname', e.target.value)
-                          }
-                          fullWidth
-                        />
-                      </Grid>
-                      
-                      {/* Splunk specific fields */}
-                      {name === 'splunk' && (
-                        <>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              label="Username"
-                              value={config.username || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'username', e.target.value)
-                              }
-                              fullWidth
-                              required
+                  <Box key={name} sx={{ mb: 4 }}>
+                    <Card elevation={2}>
+                      <CardContent>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          mb: 3,
+                          pb: 2,
+                          borderBottom: '1px solid',
+                          borderColor: 'divider'
+                        }}>
+                          <Box sx={{ 
+                            width: 40, 
+                            height: 40, 
+                            mr: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <img
+                              src={`/icons/${name}.svg`}
+                              alt={`${name} logo`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain'
+                              }}
                             />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              label="Password"
-                              type="password"
-                              value={config.password || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'password', e.target.value)
-                              }
-                              fullWidth
-                              required
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              label="App (Optional)"
-                              value={config.app || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'app', e.target.value)
-                              }
-                              fullWidth
-                              helperText="Splunk app context if needed"
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              label="Owner (Optional)"
-                              value={config.owner || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'owner', e.target.value)
-                              }
-                              fullWidth
-                              helperText="Splunk owner context if needed"
-                            />
-                          </Grid>
-                        </>
-                      )}
+                          </Box>
+                          <Typography variant="h6" sx={{ flexGrow: 1, textTransform: 'capitalize' }}>
+                            {name.replace('_', ' ')}
+                          </Typography>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={config.enabled}
+                                onChange={(e) => handleUpdateIntegrationSetting(name, 'enabled', e.target.checked)}
+                                color="primary"
+                              />
+                            }
+                            label="Enable"
+                          />
+                        </Box>
+                        <Grid container spacing={2}>
+                          {/* Integration specific fields */}
+                          {name === 'splunk' && (
+                            <>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Hostname"
+                                  value={config.hostname}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'hostname', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Username"
+                                  value={config.username || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'username', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Password"
+                                  type="password"
+                                  value={config.password || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'password', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="App"
+                                  value={config.app || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'app', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                            </>
+                          )}
+                          
+                          {/* Similar blocks for elastic and microsoft_xdr */}
+                          {name === 'elastic' && (
+                            <>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Cloud ID"
+                                  value={config.cloud_id || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'cloud_id', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="API Key"
+                                  type="password"
+                                  value={config.api_key || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'api_key', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                            </>
+                          )}
 
-                      {/* Elastic specific fields */}
-                      {name === 'elastic' && (
-                        <>
-                          <Grid item xs={12}>
-                            <TextField
-                              label="Cloud ID"
-                              value={config.cloud_id || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'cloud_id', e.target.value)
-                              }
-                              fullWidth
-                            />
-                          </Grid>
-                          <Grid item xs={12}>
-                            <TextField
-                              label="API Key"
-                              type="password"
-                              value={config.api_key || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'api_key', e.target.value)
-                              }
-                              fullWidth
-                            />
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Microsoft XDR specific fields */}
-                      {name === 'microsoft_xdr' && (
-                        <>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              label="Tenant ID"
-                              value={config.tenant_id || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'tenant_id', e.target.value)
-                              }
-                              fullWidth
-                            />
-                          </Grid>
-                          <Grid item xs={12} md={6}>
-                            <TextField
-                              label="Client ID"
-                              value={config.client_id || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'client_id', e.target.value)
-                              }
-                              fullWidth
-                            />
-                          </Grid>
-                          <Grid item xs={12}>
-                            <TextField
-                              label="Client Secret"
-                              type="password"
-                              value={config.client_secret || ''}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'client_secret', e.target.value)
-                              }
-                              fullWidth
-                            />
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Common fields for all integrations */}
-                      <Grid item xs={12}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={config.verify_ssl}
-                              onChange={(e) =>
-                                handleUpdateIntegrationSetting(name, 'verify_ssl', e.target.checked)
-                              }
-                            />
-                          }
-                          label="Verify SSL"
-                        />
-                      </Grid>
-                    </Grid>
-                    <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => handleTestIntegration(name)}
-                        disabled={!config.enabled || testIntegrationMutation.isPending}
-                      >
-                        Test Connection
-                      </Button>
-                    </Box>
-                    {testResults[name] && (
-                      <Alert 
-                        severity={testResults[name]?.success ? 'success' : 'error'}
-                        sx={{ mt: 2 }}
-                      >
-                        {testResults[name]?.message}
-                      </Alert>
-                    )}
-                    <Divider sx={{ my: 2 }} />
+                          {name === 'microsoft_xdr' && (
+                            <>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Tenant ID"
+                                  value={config.tenant_id || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'tenant_id', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Client ID"
+                                  value={config.client_id || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'client_id', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                              <Grid item xs={12} md={6}>
+                                <TextField
+                                  label="Client Secret"
+                                  type="password"
+                                  value={config.client_secret || ''}
+                                  onChange={(e) =>
+                                    handleUpdateIntegrationSetting(name, 'client_secret', e.target.value)
+                                  }
+                                  fullWidth
+                                  variant="outlined"
+                                />
+                              </Grid>
+                            </>
+                          )}
+                        </Grid>
+                      </CardContent>
+                    </Card>
                   </Box>
                 ))}
               </CardContent>
@@ -480,21 +423,23 @@ export default function SettingsPage() {
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             variant="contained"
+            color="primary"
             onClick={handleSave}
-            disabled={updateMutation.isPending}
-            sx={{ bgcolor: 'primary.main' }}
+            startIcon={<SaveIcon />}
+            sx={{ minWidth: 120 }}
           >
-            {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
+            Save
           </Button>
         </Box>
-
-        <Notification
-          open={notification.open}
-          message={notification.message}
-          severity={notification.type}
-          onClose={handleClose}
-        />
       </Box>
+
+      {/* Notification */}
+      <Notification
+        open={notification.open}
+        message={notification.message}
+        type={notification.type}
+        onClose={handleClose}
+      />
     </PageLayout>
   );
 } 

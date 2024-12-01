@@ -3,11 +3,11 @@ import { Snackbar, Alert } from '@mui/material';
 interface NotificationProps {
   open: boolean;
   message: string;
-  severity: 'success' | 'error' | 'info' | 'warning';
+  type: 'success' | 'error';
   onClose: () => void;
 }
 
-export default function Notification({ open, message, severity, onClose }: NotificationProps) {
+export default function Notification({ open, message, type, onClose }: NotificationProps) {
   return (
     <Snackbar
       open={open}
@@ -21,7 +21,7 @@ export default function Notification({ open, message, severity, onClose }: Notif
     >
       <Alert 
         onClose={onClose}
-        severity={severity}
+        severity={type}
         variant="filled"
         elevation={6}
         sx={{ 

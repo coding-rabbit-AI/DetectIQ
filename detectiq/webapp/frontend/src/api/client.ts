@@ -28,7 +28,20 @@ export const settingsApi = {
       }
       throw error;
     }
-  }
+  },
+  updateSettings: async (settings: Partial<Settings>): Promise<Settings> => {
+    const response = await apiClient.post<Settings>('/settings/update_settings/', settings);
+    return response.data;
+  },
+
+  testIntegration: async (integration: string): Promise<{success: boolean; message: string}> => {
+    const response = await apiClient.post<{success: boolean; message: string}>(
+      '/settings/test_integration/', 
+      { integration }
+    );
+    return response.data;
+  },
+
 };
 
 export const rulesApi = {
@@ -71,19 +84,6 @@ export const rulesApi = {
 
   deleteRule: async (ruleId: string): Promise<void> => {
     await apiClient.delete(`/rules/${ruleId}/`);
-  },
-
-  updateSettings: async (settings: Partial<Settings>): Promise<Settings> => {
-    const response = await apiClient.post<Settings>('/settings/update_settings/', settings);
-    return response.data;
-  },
-
-  testIntegration: async (integration: string): Promise<{success: boolean; message: string}> => {
-    const response = await apiClient.post<{success: boolean; message: string}>(
-      '/settings/test_integration/', 
-      { integration }
-    );
-    return response.data;
   },
 
   deployRule: async (ruleId: string, integration: string): Promise<{success: boolean; message: string}> => {
