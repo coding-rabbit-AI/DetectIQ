@@ -279,16 +279,27 @@ export default function SettingsPage() {
                           <Typography variant="h6" sx={{ flexGrow: 1, textTransform: 'capitalize' }}>
                             {name.replace('_', ' ')}
                           </Typography>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={config.enabled}
-                                onChange={(e) => handleUpdateIntegrationSetting(name, 'enabled', e.target.checked)}
-                                color="primary"
-                              />
-                            }
-                            label="Enable"
-                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Tooltip title="Test Connection">
+                              <IconButton
+                                onClick={() => handleTestIntegration(name)}
+                                disabled={testIntegrationMutation.isPending}
+                                color={testResults[name]?.success ? 'success' : testResults[name]?.message ? 'error' : 'default'}
+                              >
+                                <TestIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={config.enabled}
+                                  onChange={(e) => handleUpdateIntegrationSetting(name, 'enabled', e.target.checked)}
+                                  color="primary"
+                                />
+                              }
+                              label="Enable"
+                            />
+                          </Box>
                         </Box>
                         <Grid container spacing={2}>
                           {/* Integration specific fields */}
