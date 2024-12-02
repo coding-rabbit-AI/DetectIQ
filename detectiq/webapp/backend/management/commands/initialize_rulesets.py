@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 from typing import List
 
 from django.conf import settings
@@ -40,33 +41,31 @@ class Command(BaseCommand):
     ):
         """Async initialization of rulesets."""
         try:
-            # Only verify OpenAI API key if creating vector stores
-            if create_vectorstores:
-                if not settings.OPENAI_API_KEY:
-                    raise ImproperlyConfigured("OPENAI_API_KEY must be set to create vector stores")
+            if create_vectorstores and not settings.OPENAI_API_KEY:
+                raise ImproperlyConfigured("OPENAI_API_KEY must be set to create vector stores")
 
-            # Verify rule directories are configured
-            if not all(dir_path for dir_path in settings.RULE_DIRS.values()):
+            # Convert string paths to Path objects
+            rule_dirs = {
+                rule_type: Path(path) if isinstance(path, str) else path
+                for rule_type, path in settings.RULE_DIRS.items()
+            }
+
+            if not all(rule_dirs.values()):
                 raise ImproperlyConfigured("Rule directories not properly configured")
 
             logger.info("Starting async ruleset initialization")
             manager = RulesetManager()
 
-            # Determine which rule types to initialize
-            if "all" in rule_types:
-                types_to_init = ["sigma", "yara", "snort"]
-            else:
-                types_to_init = rule_types
-
+            types_to_init = ["sigma", "yara", "snort"] if "all" in rule_types else rule_types
             logger.info(f"Initializing rule types: {', '.join(types_to_init)}")
 
-            # Create rule directories if they don't exist
+            # Create directories using Path objects
             for rule_type in types_to_init:
-                directory = settings.RULE_DIRS.get(rule_type)
+                directory = rule_dirs.get(rule_type)
+                print(type(directory))
                 if directory:
-                    os.makedirs(directory, exist_ok=True)
+                    directory.mkdir(parents=True, exist_ok=True)
 
-            # Initialize rulesets with vector store option
             await manager.initialize_rulesets(create_vectorstores=create_vectorstores, rule_types=types_to_init)
             logger.info(f"Successfully initialized rulesets for: {', '.join(types_to_init)}")
 

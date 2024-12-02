@@ -25,7 +25,7 @@ export function useRules(filters: RuleFilters, page: number) {
         }
       });
       
-      const response = await fetch(`/api/rules/?${queryParams.toString()}`);
+      const response = await fetch(`/rules/?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }

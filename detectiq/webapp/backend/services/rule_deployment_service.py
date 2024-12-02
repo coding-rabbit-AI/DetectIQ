@@ -8,7 +8,7 @@ from detectiq.core.integrations.elastic import ElasticIntegration
 from detectiq.core.integrations.microsoft_xdr import MicrosoftXDRIntegration
 from detectiq.core.integrations.splunk import SplunkCredentials, SplunkIntegration
 from detectiq.core.utils.logging import get_logger
-from detectiq.webapp.backend.api.models import StoredRule
+from detectiq.webapp.backend.rules.models import StoredRule
 
 logger = get_logger(__name__)
 

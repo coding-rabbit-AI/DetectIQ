@@ -6,7 +6,7 @@ import aiofiles
 import yaml
 
 from detectiq.core.utils.logging import get_logger
-from detectiq.webapp.backend.api.models import StoredRule
+from detectiq.webapp.backend.rules.models import StoredRule
 
 logger = get_logger(__name__)
 

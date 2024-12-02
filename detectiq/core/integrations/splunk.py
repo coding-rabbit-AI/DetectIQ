@@ -7,7 +7,6 @@ import splunklib.results as splunk_results
 from pydantic import Field, SecretStr
 
 from detectiq.core.integrations.base import BaseSIEMIntegration, SIEMCredentials
-from detectiq.core.settings import settings_manager
 
 
 class SplunkCredentials(SIEMCredentials):
@@ -30,60 +29,10 @@ class SplunkIntegration(BaseSIEMIntegration):
     credentials_class = SplunkCredentials
     integration_name = "splunk"
     service: Any  # Type hint for splunk service
-    app: str
-    owner: str
 
-    def __init__(self):
+    def __init__(self, credentials: Optional[SplunkCredentials] = None):
         """Initialize Splunk integration."""
-        super().__init__()  # Add this to properly initialize the base class
-        self.credentials = settings_manager.settings.integrations.splunk
-        self._validate_credentials()
-        self._initialize_client()
-
-    def _validate_credentials(self) -> None:
-        """Validate Splunk credentials."""
-        credentials = cast(SplunkCredentials, self.credentials)
-        if not credentials.username or not credentials.password:
-            raise ValueError("Splunk integration requires username and password")
-        if not credentials.hostname:
-            raise ValueError("Splunk integration requires hostname")
-
-    def _initialize_client(self) -> None:
-        """Initialize the Splunk client."""
-        credentials = cast(SplunkCredentials, self.credentials)
-
-        # Clean up hostname
-        hostname = credentials.hostname.strip()
-        hostname = hostname.lstrip("@")
-
-        # Remove protocol if present
-        if "://" in hostname:
-            hostname = hostname.split("://")[-1]
-
-        # Remove any trailing slashes
-        hostname = hostname.rstrip("/")
-
-        try:
-            self.service = splunk_client.connect(
-                host=hostname,
-                port=8089,  # Default Splunk management port
-                username=credentials.username,
-                password=(
-                    credentials.password.get_secret_value()
-                    if isinstance(credentials.password, SecretStr)
-                    else credentials.password
-                ),
-                scheme="https" if credentials.verify_ssl else "http",
-            )
-            self.app = credentials.app or "search"
-
-            # Set namespace correctly for the service
-            self.owner = credentials.owner or credentials.username
-            self.service.namespace.app = self.app
-            self.service.namespace.owner = self.owner
-            self.service.namespace.sharing = "global"
-        except Exception as e:
-            raise ValueError(f"Failed to connect to Splunk: {str(e)}")
+        super().__init__(credentials)
 
     async def execute_search(self, query: str, **kwargs) -> Dict[str, Any]:
         """Execute a Splunk search query."""
@@ -127,7 +76,8 @@ class SplunkIntegration(BaseSIEMIntegration):
         self, rule_name: str, sharing: str = "global", owner: str = "", perms_read: str = "*"
     ) -> None:
         """Update the permissions for a correlation search."""
-        owner = self.owner
+        credentials = cast(SplunkCredentials, self.credentials)
+        owner = owner or credentials.owner or ""
 
         rule_obj = self.service.saved_searches[rule_name]
         results = rule_obj.acl_update(sharing=sharing, owner=owner, **{"perms.read": perms_read})

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, Optional, cast
 
 import aiohttp
 from pydantic import Field, SecretStr
@@ -31,9 +31,8 @@ class MicrosoftXDRIntegration(BaseSIEMIntegration):
     session: aiohttp.ClientSession
     token: str
 
-    def __init__(self) -> None:
-        # Initialize with class-level integration name
-        super().__init__()
+    def __init__(self, credentials: Optional[MicrosoftXDRCredentials] = None) -> None:
+        super().__init__(credentials)
 
     def _validate_credentials(self) -> None:
         """Validate Microsoft XDR credentials."""

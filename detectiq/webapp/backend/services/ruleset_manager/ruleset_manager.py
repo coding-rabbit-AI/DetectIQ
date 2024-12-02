@@ -32,8 +32,10 @@ class RulesetManager:
         self.vector_store_dirs = settings.VECTOR_STORE_DIRS
         self.rule_repository = DjangoRuleRepository()
 
-        # Ensure directories exist
+        # Ensure directories exist and are Path objects
         for directory in [*self.rule_dirs.values(), *self.vector_store_dirs.values()]:
+            if isinstance(directory, str):
+                directory = Path(directory)
             directory.mkdir(parents=True, exist_ok=True)
 
         # Initialize rule updaters

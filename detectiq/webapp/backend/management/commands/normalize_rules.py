@@ -2,7 +2,7 @@ import yaml
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from detectiq.webapp.backend.api.models import StoredRule
+from detectiq.webapp.backend.rules.models import StoredRule
 
 
 class Command(BaseCommand):

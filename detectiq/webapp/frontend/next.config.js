@@ -8,6 +8,12 @@ const nextConfig = {
         source: '/api/licenses/:type',
         destination: '/api/licenses/:type',
       },
+      // Forward rules to refactored /rules
+      {
+        source: '/rules/:path*/',
+        destination: 'http://127.0.0.1:8000/rules/:path*/',
+        basePath: false
+      },      
       // Forward all other API requests to Django with consistent trailing slashes
       {
         source: '/api/:path*/',

@@ -7,7 +7,7 @@ from idstools.rule import parse as parse_snort_rule
 from plyara import Plyara
 
 from detectiq.core.utils.logging import get_logger
-from detectiq.webapp.backend.api.models import RuleVersion, StoredRule
+from detectiq.webapp.backend.rules.models import RuleVersion, StoredRule
 
 logger = get_logger(__name__)
 

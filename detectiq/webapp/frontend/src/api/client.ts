@@ -65,7 +65,7 @@ export const rulesApi = {
   },
 
   createRule: async (formData: FormData): Promise<RuleCreationResponse> => {
-    const response = await fetch('/api/rules/create_with_llm/', {
+    const response = await fetch('/rules/create_with_llm/', {
       method: 'POST',
       body: formData,
     });
