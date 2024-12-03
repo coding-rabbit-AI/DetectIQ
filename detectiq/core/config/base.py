@@ -80,11 +80,11 @@ class DetectIQConfig(BaseModel):
 
 class ConfigManager:
     APP_NAME = "detectiq"
-    PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+    PROJECT_ROOT = Path(DEFAULT_DIRS.BASE_DIR)
     CONFIG_FILE = PROJECT_ROOT / "config.json"
 
     def __init__(self):
-        logger.debug(f"Initializing ConfigManager. Config file: {self.CONFIG_FILE}")
+        logger.info(f"Initializing ConfigManager. Config file: {self.CONFIG_FILE}")
         self.config = self._load_config()
         if not self.CONFIG_FILE.exists():
             self.save_config()

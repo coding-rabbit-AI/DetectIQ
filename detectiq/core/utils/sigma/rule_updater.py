@@ -1,11 +1,10 @@
-import os
 import shutil
 import zipfile
-from datetime import datetime
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import aiofiles
 import aiohttp
 from ruamel.yaml import YAML
 
@@ -20,6 +19,7 @@ class SigmaRuleUpdater:
 
     GITHUB_API_LATEST = "https://api.github.com/repos/SigmaHQ/sigma/releases/latest"
     BASE_URL = "https://github.com/SigmaHQ/sigma/releases/latest/download"
+    DRL_LICENSE_URL = "https://raw.githubusercontent.com/SigmaHQ/Detection-Rule-License/refs/heads/main/LICENSE.Detection.Rules.md"
     RULE_PACKAGES = {
         "core": "sigma_core.zip",
         "core+": "sigma_core+.zip",
@@ -71,6 +71,28 @@ class SigmaRuleUpdater:
         except Exception as e:
             raise RuntimeError(f"Failed to check for updates: {str(e)}")
 
+    async def _save_drl_license(self) -> None:
+        """Download and save the Detection Rule License."""
+        try:
+            # Create licenses directory if it doesn't exist
+            license_dir = Path("licenses/sigma")
+            license_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Download and save the DRL
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.DRL_LICENSE_URL) as response:
+                    response.raise_for_status()
+                    content = await response.text()
+                    
+                    # Save to drl.md
+                    async with aiofiles.open(license_dir / "drl.md", "w") as f:
+                        await f.write(content)
+                    logger.info("Saved Detection Rule License to licenses/sigma/drl.md")
+                    
+        except Exception as e:
+            logger.error(f"Failed to save Detection Rule License: {e}")
+            raise
+
     async def update_rules(self, force: bool = False) -> None:
         """Download and update rules."""
         try:
@@ -79,6 +101,9 @@ class SigmaRuleUpdater:
             if not updates_available and not force:
                 logger.info("No updates available")
                 return
+
+            # Download DRL license first
+            await self._save_drl_license()
 
             # Clean existing rules directory
             if self.rule_dir.exists():

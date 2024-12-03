@@ -17,6 +17,7 @@ from detectiq.core.utils.logging import get_logger
 from detectiq.webapp.backend.utils.decorators import async_action
 
 logger = get_logger(__name__)
+logger.info(f"Initial config state: {config_manager.config}")
 
 
 # Create your views here.
@@ -33,36 +34,45 @@ class AppConfigViewSet(viewsets.ViewSet):
         """Get DetectIQ config."""
         try:
             current_config = config_manager.config
+            logger.info("Fetching config...")
+            
+            # Helper function to handle SecretStr serialization
+            def handle_integration_config(integration_config):
+                if not integration_config:
+                    return {}
+                config_dict = integration_config.model_dump()
+                # Convert SecretStr to string or empty string
+                for key, value in config_dict.items():
+                    if isinstance(value, SecretStr):
+                        config_dict[key] = value.get_secret_value() if value else ""
+                return config_dict
+            
             # Convert Pydantic model to dict and structure response
             response_data = {
-                "openai_api_key": getattr(current_config, "openai_api_key", ""),
-                "rule_directories": {
-                    "sigma": getattr(current_config.rule_directories, "sigma", ""),
-                    "yara": getattr(current_config.rule_directories, "yara", ""),
-                    "snort": getattr(current_config.rule_directories, "snort", ""),
-                },
+                "openai_api_key": current_config.openai_api_key,
+                "rule_directories": current_config.rule_directories,
+                "vector_store_directories": current_config.vector_store_directories,
                 "integrations": {
-                    "splunk": (
-                        current_config.integrations.splunk.model_dump()
-                        if current_config.integrations and current_config.integrations.splunk
-                        else {}
+                    "splunk": handle_integration_config(
+                        current_config.integrations.splunk if current_config.integrations else None
                     ),
-                    "elastic": (
-                        current_config.integrations.elastic.model_dump()
-                        if current_config.integrations and current_config.integrations.elastic
-                        else {}
+                    "elastic": handle_integration_config(
+                        current_config.integrations.elastic if current_config.integrations else None
                     ),
-                    "microsoft_xdr": (
-                        current_config.integrations.microsoft_xdr.model_dump()
-                        if current_config.integrations and current_config.integrations.microsoft_xdr
-                        else {}
+                    "microsoft_xdr": handle_integration_config(
+                        current_config.integrations.microsoft_xdr if current_config.integrations else None
                     ),
                 },
             }
+            
+            logger.info(f"Response data: {response_data}")
             return Response(response_data)
         except Exception as e:
-            logger.error(f"Error getting config: {str(e)}")
-            return Response({"error": f"Failed to get config: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception(f"Error getting config: {str(e)}")
+            return Response(
+                {"error": f"Failed to get config: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @async_action(
         detail=False, methods=["POST"], url_path="update-config"

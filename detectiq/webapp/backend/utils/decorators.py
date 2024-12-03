@@ -1,4 +1,4 @@
-from asyncio import get_event_loop, set_event_loop
+from asyncio import get_event_loop, new_event_loop, set_event_loop
 from functools import wraps
 
 from asgiref.sync import async_to_sync
@@ -9,29 +9,30 @@ from detectiq.core.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-def async_action(detail=False, methods=None, url_path=None, **kwargs):
+def async_action(detail=False, methods=None, url_path=None):
     """Decorator to handle async actions in DRF viewsets."""
 
     def decorator(func):
-        @action(detail=detail, methods=methods, url_path=url_path, **kwargs)
         @wraps(func)
-        def wrapped(viewset, request, *args, **kwargs):
+        def wrapped(*args, **kwargs):
             try:
-                # Set new event loop for this thread
                 loop = get_event_loop()
+            except RuntimeError:
+                # If there's no event loop in the current thread, create one
+                loop = new_event_loop()
                 set_event_loop(loop)
-
-                # Run the async function and get result
-                result = async_to_sync(func)(viewset, request, *args, **kwargs)
-
-                # Clean up
-                loop.close()
-                return result
-
-            except Exception as e:
-                logger.error(f"Error in async action: {str(e)}")
-                raise
-
+            
+            return loop.run_until_complete(func(*args, **kwargs))
+        
+        # Preserve DRF action decorator attributes
+        wrapped.detail = detail
+        wrapped.methods = methods or ['GET']
+        wrapped.url_path = url_path
+        wrapped.kwargs = {
+            'detail': detail,
+            'methods': methods or ['GET'],
+            'url_path': url_path,
+        }
+        
         return wrapped
-
     return decorator
