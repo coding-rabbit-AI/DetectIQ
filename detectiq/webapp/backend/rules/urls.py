@@ -4,6 +4,6 @@ from rest_framework.routers import DefaultRouter
 from .views import RuleViewSet
 
 router = DefaultRouter()
-router.register("", RuleViewSet, basename="rules")
+router.register("rules", RuleViewSet, basename="rules")  # Remove 'api/' prefix
 
 urlpatterns = router.urls

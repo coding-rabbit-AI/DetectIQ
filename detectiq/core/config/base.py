@@ -34,7 +34,7 @@ class IntegrationCredentials(BaseModel):
 
 
 class Integrations(BaseModel):
-    """Integration settings model."""
+    """Integration configuration model."""
 
     splunk: Optional[SplunkCredentials] = None
     elastic: Optional[ElasticCredentials] = None
@@ -44,8 +44,8 @@ class Integrations(BaseModel):
         arbitrary_types_allowed = True
 
 
-class DetectIQSettings(BaseModel):
-    """Main settings model."""
+class DetectIQConfig(BaseModel):
+    """Main configuration model."""
 
     openai_api_key: str = Field(default="")
     rule_directories: dict = Field(
@@ -78,24 +78,24 @@ class DetectIQSettings(BaseModel):
         extra = "allow"
 
 
-class SettingsManager:
+class ConfigManager:
     APP_NAME = "detectiq"
     PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-    SETTINGS_FILE = PROJECT_ROOT / "settings.json"
+    CONFIG_FILE = PROJECT_ROOT / "config.json"
 
     def __init__(self):
-        logger.debug(f"Initializing SettingsManager. Settings file: {self.SETTINGS_FILE}")
-        self.settings = self._load_settings()
-        if not self.SETTINGS_FILE.exists():
-            self.save_settings()
+        logger.debug(f"Initializing ConfigManager. Config file: {self.CONFIG_FILE}")
+        self.config = self._load_config()
+        if not self.CONFIG_FILE.exists():
+            self.save_config()
 
-    def _load_settings(self) -> DetectIQSettings:
-        settings_dict = self._get_default_settings()
-        if self.SETTINGS_FILE.exists():
-            self._update_from_file(settings_dict)
-        return DetectIQSettings(**settings_dict)
+    def _load_config(self) -> DetectIQConfig:
+        config_dict = self._get_default_config()
+        if self.CONFIG_FILE.exists():
+            self._update_from_file(config_dict)
+        return DetectIQConfig(**config_dict)
 
-    def _get_default_settings(self) -> dict:
+    def _get_default_config(self) -> dict:
         return {
             "openai_api_key": keyring.get_password(self.APP_NAME, "openai_api_key") or os.getenv("OPENAI_API_KEY", ""),
             "rule_directories": {
@@ -113,23 +113,23 @@ class SettingsManager:
             "integrations": {},
         }
 
-    def save_settings(self):
-        settings_dict = self.settings.model_dump(exclude_none=True)
-        with open(self.SETTINGS_FILE, "w") as f:
-            json.dump(settings_dict, f, indent=2, default=str)
+    def save_config(self):
+        config_dict = self.config.model_dump(exclude_none=True)
+        with open(self.CONFIG_FILE, "w") as f:
+            json.dump(config_dict, f, indent=2, default=str)
 
-    def update_settings(self, **kwargs):
-        settings_dict = self.settings.model_dump()
-        settings_dict.update(kwargs)
-        self.settings = DetectIQSettings(**settings_dict)
-        self.save_settings()
+    def update_config(self, **kwargs):
+        config_dict = self.config.model_dump()
+        config_dict.update(kwargs)
+        self.config = DetectIQConfig(**config_dict)
+        self.save_config()
 
-    def _update_from_file(self, settings_dict: dict) -> None:
-        with open(self.SETTINGS_FILE) as f:
-            file_settings = json.load(f)
-            settings_dict.update(file_settings)
+    def _update_from_file(self, config_dict: dict) -> None:
+        with open(self.CONFIG_FILE) as f:
+            file_config = json.load(f)
+            config_dict.update(file_config)
 
 
-async def get_settings(user: Optional[Any] = None) -> SettingsManager:
-    """Get settings manager instance."""
-    return SettingsManager()
+async def get_config(user: Optional[Any] = None) -> ConfigManager:
+    """Get config manager instance."""
+    return ConfigManager()

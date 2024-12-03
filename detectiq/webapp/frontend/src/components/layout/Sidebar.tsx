@@ -10,7 +10,7 @@ import { usePathname, useRouter } from 'next/navigation';
 const menuItems = [
   { text: 'Rules', icon: <SecurityIcon />, path: '/' },
   { text: 'Rule Creator', icon: <BuildIcon />, path: '/rule-creator' },
-  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/app-config' },
   { text: 'About', icon: <InfoIcon />, path: '/about' },
 ];
 

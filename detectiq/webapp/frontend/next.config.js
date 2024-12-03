@@ -3,29 +3,42 @@ const nextConfig = {
   trailingSlash: true,
   async rewrites() {
     return [
-      // Handle license requests first (Next.js API routes)
+      // API endpoints only - not the page itself
+      {
+        source: '/api/rules/:path*/',
+        destination: 'http://127.0.0.1:8000/rules/:path*/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/:path*/',
+        destination: 'http://127.0.0.1:8000/app-config/:path*/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/get-config/',
+        destination: 'http://127.0.0.1:8000/app-config/get-config/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/update-config/',
+        destination: 'http://127.0.0.1:8000/app-config/update-config/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/test_integration/',
+        destination: 'http://127.0.0.1:8000/app-config/test_integration/',
+        basePath: false
+      },
+      // Other routes...
       {
         source: '/api/licenses/:type',
         destination: '/api/licenses/:type',
       },
-      // Forward rules to refactored /rules
-      {
-        source: '/rules/:path*/',
-        destination: 'http://127.0.0.1:8000/rules/:path*/',
-        basePath: false
-      },      
-      // Forward all other API requests to Django with consistent trailing slashes
-      {
-        source: '/api/:path*/',
-        destination: 'http://127.0.0.1:8000/api/:path*/',
-        basePath: false
-      },
-      // Catch-all for API requests without trailing slashes
-      {
-        source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*/',
-        basePath: false
-      }
+      //{
+      //  source: '/api/:path*/',
+      //  destination: 'http://127.0.0.1:8000/api/:path*/',
+      //  basePath: false
+      //},
     ];
   },
   // Increase timeouts

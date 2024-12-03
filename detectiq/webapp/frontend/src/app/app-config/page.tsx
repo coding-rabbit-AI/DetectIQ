@@ -78,7 +78,7 @@ export default function SettingsPage() {
   });
 
   const { data: savedSettings, isLoading } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ['config'],
     queryFn: settingsApi.getSettings,
   });
 
@@ -184,7 +184,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <PageLayout title="Settings">
+    <PageLayout title="Config">
       <Box sx={{ maxWidth: 'lg', mx: 'auto', p: 3 }}>
         <Grid container spacing={3}>
           {/* API Keys */}

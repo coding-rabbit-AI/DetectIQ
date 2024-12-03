@@ -4,7 +4,7 @@ from pathlib import Path
 import environ
 from pydantic import BaseModel, Field
 
-from detectiq.core.settings import settings_manager
+from detectiq.core.config import config_manager
 from detectiq.globals import DEFAULT_DIRS
 
 # Initialize environment variables
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "detectiq.webapp.backend",
     "detectiq.webapp.backend.api",
     "detectiq.webapp.backend.rules.apps.RulesConfig",
+    "detectiq.webapp.backend.app_config.apps.AppConfigConfig",
 ]
 
 MIDDLEWARE = [

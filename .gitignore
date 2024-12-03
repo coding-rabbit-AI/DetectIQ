@@ -205,3 +205,4 @@ detectiq/webapp/backend/data/rules/
 *.db
 *.sqlite3
 settings.json
+config.json

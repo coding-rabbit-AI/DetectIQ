@@ -2,66 +2,44 @@ import asyncio
 import tempfile
 from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, Union, cast
+from typing import Any, Dict, cast
 
-from asgiref.sync import async_to_sync, sync_to_async
+from asgiref.sync import async_to_sync
 from django.conf import settings as django_settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models import Q
-from django.http import HttpRequest, QueryDict
+from django.http import QueryDict
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request as DRFRequest
 from rest_framework.response import Response
 
+from detectiq.core.config.base import get_config
 from detectiq.core.llm.sigma_rules import SigmaLLM
 from detectiq.core.llm.snort_rules import SnortLLM
 from detectiq.core.llm.tools.sigma.create_sigma_rule import CreateSigmaRuleTool
 from detectiq.core.llm.tools.snort.create_snort_rule import CreateSnortRuleTool
 from detectiq.core.llm.tools.yara.create_yara_rule import CreateYaraRuleTool
 from detectiq.core.llm.yara_rules import YaraLLM
-from detectiq.core.settings import settings_manager
-from detectiq.core.settings.base import get_settings
 from detectiq.core.utils.logging import get_logger
 from detectiq.core.utils.snort.pcap_analyzer import PcapAnalyzer
 from detectiq.core.utils.yara.file_analyzer import FileAnalyzer
 from detectiq.core.utils.yara.rule_scanner import YaraScanner
 from detectiq.webapp.backend.services.rule_deployment_service import RuleDeploymentService
 from detectiq.webapp.backend.services.rule_service import DjangoRuleRepository
+from detectiq.webapp.backend.utils.decorators import async_action
 
 from .models import RuleVersion, StoredRule
 from .serializers import StoredRuleSerializer
 
 logger = get_logger(__name__)
-
-
-def async_action(detail=False, methods=None, url_path=None, **kwargs):
-    """Decorator to handle async actions in DRF viewsets."""
-
-    def decorator(func):
-        @action(detail=detail, methods=methods, url_path=url_path, **kwargs)
-        @wraps(func)
-        def wrapped(viewset, request, *args, **kwargs):
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                result = async_to_sync(func)(viewset, request, *args, **kwargs)
-                loop.close()
-                return result
-            except Exception as e:
-                logger.error(f"Error in async action: {str(e)}")
-                raise
-
-        return wrapped
-
-    return decorator
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -80,7 +58,7 @@ class RuleViewSet(viewsets.ModelViewSet):
         self.embeddings = OpenAIEmbeddings()
 
         # Initialize settings
-        self.settings = async_to_sync(get_settings)().settings
+        self.detectiq_config = async_to_sync(get_config)().config
 
         # Initialize vector stores
         self.sigmadb = self._init_vector_store("sigma")
@@ -92,7 +70,7 @@ class RuleViewSet(viewsets.ModelViewSet):
         try:
             from langchain_community.vectorstores import FAISS
 
-            vector_store_path = self.settings.vector_store_directories[rule_type]
+            vector_store_path = self.detectiq_config.vector_store_directories[rule_type]
             if Path(vector_store_path).exists():
                 return FAISS.load_local(str(vector_store_path), self.embeddings, allow_dangerous_deserialization=True)
             return None
@@ -195,9 +173,9 @@ class RuleViewSet(viewsets.ModelViewSet):
                     matching_rules = None
                     analysis = await analyzer.analyze_file(Path(temp_path))
                     if rule_type == "yara":
-                        matching_rules = YaraScanner(rule_dir=str(self.settings.rule_directories["yara"])).scan_file(
-                            temp_path
-                        )
+                        matching_rules = YaraScanner(
+                            rule_dir=str(self.detectiq_config.rule_directories["yara"])
+                        ).scan_file(temp_path)
                     file_analysis = analysis
                     Path(temp_path).unlink(missing_ok=True)
                 except Exception as e:
@@ -271,7 +249,7 @@ class RuleViewSet(viewsets.ModelViewSet):
             if not integration_type:
                 return Response({"error": "Integration type required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            integration_config = getattr(self.settings.integrations, integration_type, None)
+            integration_config = getattr(self.detectiq_config.integrations, integration_type, None)
 
             if not integration_config or not integration_config.enabled:
                 return Response(
@@ -313,16 +291,16 @@ class RuleViewSet(viewsets.ModelViewSet):
 
             llm_handlers = {
                 "sigma": SigmaLLM(
-                    rule_dir=str(self.settings.rule_directories["sigma"]),
-                    vector_store_dir=str(self.settings.vector_store_directories["sigma"]),
+                    rule_dir=str(self.detectiq_config.rule_directories["sigma"]),
+                    vector_store_dir=str(self.detectiq_config.vector_store_directories["sigma"]),
                 ),
                 "yara": YaraLLM(
-                    rule_dir=str(self.settings.rule_directories["yara"]),
-                    vector_store_dir=str(self.settings.vector_store_directories["yara"]),
+                    rule_dir=str(self.detectiq_config.rule_directories["yara"]),
+                    vector_store_dir=str(self.detectiq_config.vector_store_directories["yara"]),
                 ),
                 "snort": SnortLLM(
-                    rule_dir=str(self.settings.rule_directories["snort"]),
-                    vector_store_dir=str(self.settings.vector_store_directories["snort"]),
+                    rule_dir=str(self.detectiq_config.rule_directories["snort"]),
+                    vector_store_dir=str(self.detectiq_config.vector_store_directories["snort"]),
                 ),
             }
 
@@ -391,35 +369,3 @@ class RuleViewSet(viewsets.ModelViewSet):
         if isinstance(request.data, QueryDict):
             return dict(request.data.items())
         return cast(Dict[str, Any], request.data)
-
-    @property
-    def drf_settings(self):
-        """Access DRF settings from Django settings."""
-        return django_settings.REST_FRAMEWORK
-
-    def get_format_suffix(self, **kwargs):
-        """Get format suffix from DRF settings."""
-        format_kwarg = self.drf_settings.get("FORMAT_SUFFIX_KWARG")
-        return kwargs.get(format_kwarg) if format_kwarg else None
-
-    def get_exception_handler(self):
-        """Get exception handler from DRF settings."""
-        return self.drf_settings.get("EXCEPTION_HANDLER")
-
-    def get_view_description(self, html=False):
-        """Get view description function from DRF settings."""
-        view_desc_func = self.drf_settings.get("VIEW_DESCRIPTION_FUNCTION", "rest_framework.views.get_view_description")
-        if isinstance(view_desc_func, str):
-            from django.utils.module_loading import import_string
-
-            view_desc_func = import_string(view_desc_func)
-        return view_desc_func(self, html)
-
-    def get_view_name(self):
-        """Get view name function from DRF settings."""
-        view_name_func = self.drf_settings.get("VIEW_NAME_FUNCTION", "rest_framework.views.get_view_name")
-        if isinstance(view_name_func, str):
-            from django.utils.module_loading import import_string
-
-            view_name_func = import_string(view_name_func)
-        return view_name_func(self)
