@@ -109,7 +109,7 @@ class ConfigManager:
                 "snort": str(DEFAULT_DIRS.SNORT_VECTOR_STORE_DIR),
             },
             "log_level": os.getenv("DETECTIQ_LOG_LEVEL", "INFO"),
-            "model": os.getenv("DETECTIQ_MODEL", "gpt-4"),
+            "model": os.getenv("DETECTIQ_MODEL", "gpt-4o"),
             "integrations": {},
         }
 
