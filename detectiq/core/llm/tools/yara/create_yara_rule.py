@@ -54,7 +54,7 @@ or patterns while avoiding false positives.
         rule_context: Optional[str] = None,
         file_analysis: Optional[Dict[str, Any]] = None,
         matching_rules: Optional[List[Dict]] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         return asyncio.run(self._arun(description, rule_context, file_analysis, matching_rules))
 
     async def _arun(
@@ -64,7 +64,7 @@ or patterns while avoiding false positives.
         file_analysis: Optional[Dict[str, Any]] = None,
         matching_rules: Optional[List[Dict]] = None,
         k: int = 3,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """Create a YARA rule based on description or analysis."""
         try:
             # Get current date
@@ -306,8 +306,8 @@ All strings that are defined in the strings section MUST be used in the conditio
 
             except Exception as e:
                 logger.error(f"Error in YARA rule: {str(e)}")
-                # Error handling continues...
+                raise e
 
         except Exception as e:
             logger.error(f"Error creating YARA rule: {e}")
-            raise
+            raise e

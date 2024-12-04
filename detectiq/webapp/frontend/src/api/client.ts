@@ -73,19 +73,6 @@ export const rulesApi = {
     return response.data;
   },
 
-  createRule: async (formData: FormData): Promise<RuleCreationResponse> => {
-    const response = await fetch('/api/rules/create_with_llm/', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to create rule');
-    }
-    
-    return response.json();
-  },
-
   updateRule: async (ruleId: string, updates: Partial<Rule>): Promise<Rule> => {
     const response = await apiClient.patch<Rule>(`/api/rules/${ruleId}/`, updates);
     return response.data;
@@ -108,3 +95,19 @@ export const rulesApi = {
     return response.data;
   },
 }; 
+
+
+export const ruleCreatorApi = {
+  createRule: async (formData: FormData): Promise<RuleCreationResponse> => {
+    const response = await fetch('/api/rule-creator/create-with-llm/', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to create rule');
+    }
+    
+    return response.json();
+  },
+};

@@ -29,6 +29,11 @@ const nextConfig = {
         destination: 'http://127.0.0.1:8000/app-config/test_integration/',
         basePath: false
       },
+      {
+        source: '/api/rule-creator/:path*/',
+        destination: 'http://127.0.0.1:8000/rule-creator/:path*/',
+        basePath: false
+      },
       // Other routes...
       {
         source: '/api/licenses/:type',

@@ -16,6 +16,9 @@ export interface IntegrationCredentials {
 
 export interface Settings {
   openai_api_key: string;
+  llm_model: string;
+  embeddings_model: string;
+  temperature: number;
   rule_directories: {
     [key: string]: string;
   };

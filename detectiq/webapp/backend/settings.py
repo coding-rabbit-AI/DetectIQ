@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "detectiq.webapp.backend.api",
     "detectiq.webapp.backend.rules.apps.RulesConfig",
     "detectiq.webapp.backend.app_config.apps.AppConfigConfig",
+    "detectiq.webapp.backend.rule_creator.apps.RuleCreatorConfig",
 ]
 
 MIDDLEWARE = [

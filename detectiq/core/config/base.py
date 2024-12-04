@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import keyring
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, SecretStr
 
 from detectiq.core.integrations.elastic import ElasticCredentials
@@ -13,6 +14,9 @@ from detectiq.core.utils.logging import get_logger
 from detectiq.globals import DEFAULT_DIRS
 
 logger = get_logger(__name__)
+
+
+load_dotenv()
 
 
 class IntegrationCredentials(BaseModel):
@@ -48,18 +52,21 @@ class DetectIQConfig(BaseModel):
     """Main configuration model."""
 
     openai_api_key: str = Field(default="")
+    llm_model: str = Field(default="gpt-4o")
+    embeddings_model: str = Field(default="text-embedding-3-small")
+    temperature: float = Field(default=round(float(os.getenv("LLM_TEMPERATURE", 0.10)), 2))
     rule_directories: dict = Field(
         default_factory=lambda: {
-            "sigma": str(DEFAULT_DIRS.SIGMA_RULE_DIR),
-            "yara": str(DEFAULT_DIRS.YARA_RULE_DIR),
-            "snort": str(DEFAULT_DIRS.SNORT_RULE_DIR),
+            "sigma": os.getenv("SIGMA_RULE_DIR", str(DEFAULT_DIRS.SIGMA_RULE_DIR)),
+            "yara": os.getenv("YARA_RULE_DIR", str(DEFAULT_DIRS.YARA_RULE_DIR)),
+            "snort": os.getenv("SNORT_RULE_DIR", str(DEFAULT_DIRS.SNORT_RULE_DIR)),
         }
     )
     vector_store_directories: dict = Field(
         default_factory=lambda: {
             "sigma": str(DEFAULT_DIRS.SIGMA_VECTOR_STORE_DIR),
-            "yara": str(DEFAULT_DIRS.YARA_VECTOR_STORE_DIR),
-            "snort": str(DEFAULT_DIRS.SNORT_VECTOR_STORE_DIR),
+            "yara": os.getenv("YARA_VECTOR_STORE_DIR", str(DEFAULT_DIRS.YARA_VECTOR_STORE_DIR)),
+            "snort": os.getenv("SNORT_VECTOR_STORE_DIR", str(DEFAULT_DIRS.SNORT_VECTOR_STORE_DIR)),
         }
     )
     log_level: str = Field(default="INFO")
@@ -98,18 +105,20 @@ class ConfigManager:
     def _get_default_config(self) -> dict:
         return {
             "openai_api_key": keyring.get_password(self.APP_NAME, "openai_api_key") or os.getenv("OPENAI_API_KEY", ""),
+            "llm_model": os.getenv("LLM_MODEL", "gpt-4o"),
+            "temperature": round(float(os.getenv("LLM_TEMPERATURE", 0.10)), 2),
+            "embeddings_model": os.getenv("EMBEDDINGS_MODEL", "text-embedding-3-small"),
             "rule_directories": {
-                "sigma": str(DEFAULT_DIRS.SIGMA_RULE_DIR),
-                "yara": str(DEFAULT_DIRS.YARA_RULE_DIR),
-                "snort": str(DEFAULT_DIRS.SNORT_RULE_DIR),
+                "sigma": os.getenv("SIGMA_RULE_DIR", str(DEFAULT_DIRS.SIGMA_RULE_DIR)),
+                "yara": os.getenv("YARA_RULE_DIR", str(DEFAULT_DIRS.YARA_RULE_DIR)),
+                "snort": os.getenv("SNORT_RULE_DIR", str(DEFAULT_DIRS.SNORT_RULE_DIR)),
             },
             "vector_store_directories": {
-                "sigma": str(DEFAULT_DIRS.SIGMA_VECTOR_STORE_DIR),
-                "yara": str(DEFAULT_DIRS.YARA_VECTOR_STORE_DIR),
-                "snort": str(DEFAULT_DIRS.SNORT_VECTOR_STORE_DIR),
+                "sigma": os.getenv("SIGMA_VECTOR_STORE_DIR", str(DEFAULT_DIRS.SIGMA_VECTOR_STORE_DIR)),
+                "yara": os.getenv("YARA_VECTOR_STORE_DIR", str(DEFAULT_DIRS.YARA_VECTOR_STORE_DIR)),
+                "snort": os.getenv("SNORT_VECTOR_STORE_DIR", str(DEFAULT_DIRS.SNORT_VECTOR_STORE_DIR)),
             },
             "log_level": os.getenv("DETECTIQ_LOG_LEVEL", "INFO"),
-            "model": os.getenv("DETECTIQ_MODEL", "gpt-4o"),
             "integrations": {},
         }
 

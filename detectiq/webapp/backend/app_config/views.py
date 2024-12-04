@@ -47,6 +47,9 @@ class AppConfigViewSet(viewsets.ViewSet):
             # Convert Pydantic model to dict and structure response
             response_data = {
                 "openai_api_key": current_config.openai_api_key,
+                "llm_model": current_config.llm_model,
+                "embeddings_model": current_config.embeddings_model,
+                "temperature": current_config.temperature,
                 "rule_directories": current_config.rule_directories,
                 "vector_store_directories": current_config.vector_store_directories,
                 "integrations": {

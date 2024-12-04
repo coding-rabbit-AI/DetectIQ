@@ -268,7 +268,7 @@ You MUST provide your response in the following format:
 
         except Exception as e:
             logger.error(f"Error in _arun: {str(e)}")
-            raise
+            raise e
 
     def _run(
         self,

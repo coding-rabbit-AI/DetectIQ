@@ -22,6 +22,9 @@ export default function SettingsPage() {
       yara: '',
       snort: '',
     },
+    llm_model: '',
+    embeddings_model: '',
+    temperature: 0.1,
     vector_store_directories: {
       sigma: '',
       yara: '',
@@ -53,6 +56,7 @@ export default function SettingsPage() {
         enabled: false,
       },
     },
+    
   });
 
   const [notification, setNotification] = useState<{
@@ -105,7 +109,18 @@ export default function SettingsPage() {
           <Grid item xs={12}>
             <OpenAISection 
               apiKey={settings.openai_api_key}
-              onChange={(value) => setSettings({ ...settings, openai_api_key: value })}
+              llmModel={settings.llm_model}
+              embeddingsModel={settings.embeddings_model}
+              temperature={settings.temperature}
+              onChange={(field, value) => 
+                setSettings({ 
+                  ...settings, 
+                  [field === 'apiKey' ? 'openai_api_key' : 
+                   field === 'llmModel' ? 'llm_model' : 
+                   field === 'embeddingsModel' ? 'embeddings_model' :
+                   'temperature']: value 
+                })
+              }
             />
           </Grid>
 
