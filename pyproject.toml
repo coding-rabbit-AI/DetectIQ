@@ -142,3 +142,4 @@ asyncio_mode = "auto"
 
 [tool.poetry.scripts]
 update-reqs = "update_requirements:main"
+format = "format:main"

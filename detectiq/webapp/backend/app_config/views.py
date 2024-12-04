@@ -17,10 +17,8 @@ from detectiq.core.utils.logging import get_logger
 from detectiq.webapp.backend.utils.decorators import async_action
 
 logger = get_logger(__name__)
-logger.info(f"Initial config state: {config_manager.config}")
 
 
-# Create your views here.
 @method_decorator(csrf_exempt, name="dispatch")
 class AppConfigViewSet(viewsets.ViewSet):
     """ViewSet for managing DetectIQ config/settings"""
@@ -34,8 +32,7 @@ class AppConfigViewSet(viewsets.ViewSet):
         """Get DetectIQ config."""
         try:
             current_config = config_manager.config
-            logger.info("Fetching config...")
-            
+
             # Helper function to handle SecretStr serialization
             def handle_integration_config(integration_config):
                 if not integration_config:
@@ -46,7 +43,7 @@ class AppConfigViewSet(viewsets.ViewSet):
                     if isinstance(value, SecretStr):
                         config_dict[key] = value.get_secret_value() if value else ""
                 return config_dict
-            
+
             # Convert Pydantic model to dict and structure response
             response_data = {
                 "openai_api_key": current_config.openai_api_key,
@@ -64,15 +61,10 @@ class AppConfigViewSet(viewsets.ViewSet):
                     ),
                 },
             }
-            
-            logger.info(f"Response data: {response_data}")
             return Response(response_data)
         except Exception as e:
             logger.exception(f"Error getting config: {str(e)}")
-            return Response(
-                {"error": f"Failed to get config: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"error": f"Failed to get config: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @async_action(
         detail=False, methods=["POST"], url_path="update-config"

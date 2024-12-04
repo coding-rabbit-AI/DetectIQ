@@ -21,18 +21,19 @@ def async_action(detail=False, methods=None, url_path=None):
                 # If there's no event loop in the current thread, create one
                 loop = new_event_loop()
                 set_event_loop(loop)
-            
+
             return loop.run_until_complete(func(*args, **kwargs))
-        
+
         # Preserve DRF action decorator attributes
-        wrapped.detail = detail
-        wrapped.methods = methods or ['GET']
-        wrapped.url_path = url_path
-        wrapped.kwargs = {
-            'detail': detail,
-            'methods': methods or ['GET'],
-            'url_path': url_path,
+        wrapped.detail = detail  # type: ignore
+        wrapped.methods = methods or ["GET"]  # type: ignore
+        wrapped.url_path = url_path  # type: ignore
+        wrapped.kwargs = {  # type: ignore
+            "detail": detail,
+            "methods": methods or ["GET"],
+            "url_path": url_path,
         }
-        
+
         return wrapped
+
     return decorator
