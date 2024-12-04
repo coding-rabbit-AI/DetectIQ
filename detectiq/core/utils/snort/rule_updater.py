@@ -1,6 +1,7 @@
 import asyncio
 import shutil
 import tarfile
+from hashlib import md5
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -19,12 +20,104 @@ class SnortRuleUpdater:
     """Class for updating Snort rules."""
 
     SNORT_RULES_URL = "https://www.snort.org/downloads/community/snort3-community-rules.tar.gz"
+    MD5_URL = "https://www.snort.org/downloads/community/md5s"
 
     def __init__(self, rule_dir: Optional[str] = None):
         """Initialize SnortRuleUpdater."""
         self.rule_dir = Path(rule_dir or DEFAULT_DIRS.SNORT_RULE_DIR)
         self.rule_dir.mkdir(parents=True, exist_ok=True)
         self.rules_file = self.rule_dir / "snort3-community-rules.tar.gz"
+        self.installed_version = None  # Will use MD5 hash as version
+
+        # Store individual rules in a subdirectory (consistent with other updaters)
+        self.individual_rules_dir = self.rule_dir / "individual_rules"
+        self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
+
+    async def check_for_updates(self) -> Tuple[bool, Optional[str]]:
+        """Check if updates are available."""
+        try:
+            remote_md5 = await self._fetch_remote_md5()
+            local_md5 = self._calculate_local_md5()
+
+            if not local_md5 or remote_md5 != local_md5:
+                return True, remote_md5
+
+            return False, remote_md5
+        except Exception as e:
+            raise RuntimeError(f"Failed to check for updates: {str(e)}")
+
+    async def update_rules(self, force: bool = False) -> None:
+        """Update Snort rules."""
+        try:
+            updates_available, latest_version = await self.check_for_updates()
+
+            if not updates_available and not force:
+                logger.info("No updates available")
+                return
+
+            # Clean existing rules directory (consistent with other updaters)
+            if self.rule_dir.exists():
+                logger.info("Cleaning rule directory")
+                try:
+                    shutil.rmtree(self.rule_dir)
+                    self.rule_dir.mkdir(parents=True, exist_ok=True)
+                    self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
+                    logger.info("Successfully cleaned rule directory")
+                except Exception as e:
+                    logger.error(f"Error cleaning rule directory: {e}")
+                    raise
+
+            # Download and extract rules
+            await self._download_rules()
+            await self._extract_rules()
+
+            # Save individual rules (consistent with other updaters)
+            await self._save_individual_rules()
+
+            # Update installed version
+            self.installed_version = latest_version
+            logger.info(f"Updated to version {latest_version}")
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to update rules: {str(e)}")
+
+    async def _save_individual_rules(self) -> None:
+        """Parse and save individual rules."""
+        try:
+            rules_path = self.rule_dir / "snort3-community-rules"
+            for file in rules_path.glob("*.rules"):
+                if file.is_file():
+                    async with aio_open(file, "r") as f:
+                        content = await f.read()
+
+                    # Split content into individual rules
+                    individual_rules = [
+                        rule.strip()
+                        for rule in content.split("\n")
+                        if rule.strip() and not rule.strip().startswith("#")
+                    ]
+
+                    # Save each rule to individual file
+                    for rule in individual_rules:
+                        try:
+                            metadata = self._parse_rule_metadata(rule)
+                            if not metadata:
+                                continue
+
+                            rule_name = f"{metadata.get('msg', 'unknown').replace(' ', '_')}.rules"
+                            rule_path = self.individual_rules_dir / rule_name
+
+                            async with aio_open(rule_path, "w") as f:
+                                await f.write(rule)
+
+                        except Exception as e:
+                            logger.warning(f"Failed to save individual rule: {e}")
+                            continue
+
+            logger.info(f"Saved individual rules to {self.individual_rules_dir}")
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to save individual rules: {str(e)}")
 
     async def _extract_and_save_licenses(self, tar_file) -> None:
         """Extract and save license files from Snort rules tarball."""
@@ -60,32 +153,31 @@ class SnortRuleUpdater:
             logger.error(f"Failed to extract and save Snort license files: {e}")
             raise
 
-    async def update_rules(self, force: bool = False) -> None:
-        """Update Snort rules."""
+    async def _fetch_remote_md5(self) -> Optional[str]:
+        """Fetch the MD5 hash of the latest Snort rules from the Snort website."""
         try:
-            # Download rules if they don't exist or force update
-            if force or not self.rules_file.exists():
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(self.SNORT_RULES_URL) as response:
-                        response.raise_for_status()
-                        content = await response.read()
-
-                        # Save the downloaded content
-                        self.rules_file.write_bytes(content)
-
-            # Extract rules and licenses
-            with tarfile.open(self.rules_file, "r:gz") as tar:
-                # Extract license files first
-                await self._extract_and_save_licenses(tar)
-
-                # Extract rules
-                tar.extractall(path=self.rule_dir)
-
-            logger.info("Successfully updated Snort rules")
-
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.MD5_URL) as response:
+                    response.raise_for_status()
+                    content = await response.text()
+                    for line in content.splitlines():
+                        if "snort3-community-rules.tar.gz" in line:
+                            return line.split()[0]
         except Exception as e:
-            logger.error(f"Failed to update Snort rules: {e}")
-            raise
+            logger.error(f"Failed to fetch remote MD5 hash: {e}")
+        return None
+
+    def _calculate_local_md5(self) -> Optional[str]:
+        """Calculate the MD5 hash of the local Snort rules file."""
+        try:
+            hash_md5 = md5()
+            with open(self.rules_file, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+        except Exception as e:
+            logger.error(f"Failed to calculate local MD5 hash: {e}")
+        return None
 
     async def load_rules(self) -> List[Dict[str, str]]:
         """Load Snort rules from files.
@@ -331,7 +423,7 @@ class SnortRuleUpdater:
     async def _save_license_files(self, extracted_path: Path) -> None:
         """Save Snort license files to the licenses directory."""
         try:
-            license_dir = Path("licenses/snort")
+            license_dir = Path(DEFAULT_DIRS.BASE_DIR) / Path("licenses/snort")
             license_dir.mkdir(parents=True, exist_ok=True)
 
             # List of files to copy with their new names

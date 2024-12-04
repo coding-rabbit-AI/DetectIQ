@@ -346,7 +346,7 @@ class YaraRuleUpdater:
                 license_text = content[: match.start()].strip()
 
                 # Create licenses directory if it doesn't exist
-                license_dir = Path("licenses/yara")
+                license_dir = Path(DEFAULT_DIRS.BASE_DIR) / Path("licenses/yara")
                 license_dir.mkdir(parents=True, exist_ok=True)
 
                 # Save license

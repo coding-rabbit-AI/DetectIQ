@@ -19,7 +19,9 @@ class SigmaRuleUpdater:
 
     GITHUB_API_LATEST = "https://api.github.com/repos/SigmaHQ/sigma/releases/latest"
     BASE_URL = "https://github.com/SigmaHQ/sigma/releases/latest/download"
-    DRL_LICENSE_URL = "https://raw.githubusercontent.com/SigmaHQ/Detection-Rule-License/refs/heads/main/LICENSE.Detection.Rules.md"
+    DRL_LICENSE_URL = (
+        "https://raw.githubusercontent.com/SigmaHQ/Detection-Rule-License/refs/heads/main/LICENSE.Detection.Rules.md"
+    )
     RULE_PACKAGES = {
         "core": "sigma_core.zip",
         "core+": "sigma_core+.zip",
@@ -75,20 +77,20 @@ class SigmaRuleUpdater:
         """Download and save the Detection Rule License."""
         try:
             # Create licenses directory if it doesn't exist
-            license_dir = Path("licenses/sigma")
+            license_dir = Path(DEFAULT_DIRS.BASE_DIR) / Path("licenses/sigma")
             license_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Download and save the DRL
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.DRL_LICENSE_URL) as response:
                     response.raise_for_status()
                     content = await response.text()
-                    
+
                     # Save to drl.md
                     async with aiofiles.open(license_dir / "drl.md", "w") as f:
                         await f.write(content)
                     logger.info("Saved Detection Rule License to licenses/sigma/drl.md")
-                    
+
         except Exception as e:
             logger.error(f"Failed to save Detection Rule License: {e}")
             raise
