@@ -71,6 +71,26 @@ export const settingsApi = {
     }
     return response.json();
   },
+  checkRulePackages: async () => {
+    const response = await fetch('/api/app-config/check-rule-packages/');
+    if (!response.ok) {
+      throw new Error('Failed to check rule packages');
+    }
+    return response.json();
+  },
+  updateRulePackage: async (type: string) => {
+    const response = await fetch('/api/app-config/update-rule-package/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update rule package');
+    }
+    return response.json();
+  },
 };
 
 export const rulesApi = {

@@ -11,6 +11,12 @@ interface DirectoriesSectionProps {
   onVectorStoreDirectoryChange: (type: string, value: string) => void;
 }
 
+interface RulePackageStatus {
+  current_version: string;
+  latest_version: string;
+  needs_update: boolean;
+}
+
 export default function DirectoriesSection({
   ruleDirectories,
   vectorStoreDirectories,
@@ -19,10 +25,17 @@ export default function DirectoriesSection({
 }: DirectoriesSectionProps) {
   // Add state to track ongoing operations per rule type
   const [creatingVectorstores, setCreatingVectorstores] = useState<{[key: string]: boolean}>({});
+  const [updatingPackages, setUpdatingPackages] = useState<{[key: string]: boolean}>({});
 
   const { data: vectorstoreStatus, refetch: refetchVectorstores } = useQuery({
     queryKey: ['vectorstoreStatus'],
     queryFn: settingsApi.checkVectorstores,
+  });
+
+  // Add query for rule package status
+  const { data: rulePackageStatus, refetch: refetchPackages } = useQuery({
+    queryKey: ['rulePackageStatus'],
+    queryFn: settingsApi.checkRulePackages,
   });
 
   // Modified mutation with better error handling
@@ -64,6 +77,19 @@ export default function DirectoriesSection({
     },
   });
 
+  // Add mutation for updating packages
+  const updatePackageMutation = useMutation({
+    mutationFn: async (type: string) => {
+      try {
+        setUpdatingPackages(prev => ({ ...prev, [type]: true }));
+        await settingsApi.updateRulePackage(type);
+        await refetchPackages();
+      } finally {
+        setUpdatingPackages(prev => ({ ...prev, [type]: false }));
+      }
+    },
+  });
+
   // Pass the creating state to DirectoryGroup
   return (
     <Card elevation={2}>
@@ -79,6 +105,9 @@ export default function DirectoriesSection({
           directories={ruleDirectories}
           onChange={onRuleDirectoryChange}
           labelPrefix="Rules"
+          rulePackageStatus={rulePackageStatus}
+          onUpdateRulePackage={(type) => updatePackageMutation.mutate(type)}
+          isUpdatingPackage={updatingPackages}
         />
 
         {/* Vector Store Directories */}
@@ -109,6 +138,9 @@ interface DirectoryGroupProps {
   vectorstoreStatus?: { [key: string]: { exists: boolean } };
   onCreateVectorstore?: (type: string) => void;
   isCreatingVectorstore?: {[key: string]: boolean};
+  rulePackageStatus?: { [key: string]: RulePackageStatus };
+  onUpdateRulePackage?: (type: string) => void;
+  isUpdatingPackage?: {[key: string]: boolean};
 }
 
 // Helper component for directory groups
@@ -122,6 +154,9 @@ function DirectoryGroup({
   vectorstoreStatus,
   onCreateVectorstore,
   isCreatingVectorstore = {},
+  rulePackageStatus,
+  onUpdateRulePackage,
+  isUpdatingPackage = {},
 }: DirectoryGroupProps) {
   // Add state for client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -155,6 +190,31 @@ function DirectoryGroup({
                 fullWidth
                 variant="outlined"
               />
+              {rulePackageStatus && rulePackageStatus[type] && (
+                <Box sx={{ mt: 1 }}>
+                  <Alert 
+                    severity={rulePackageStatus[type].needs_update ? "warning" : "success"}
+                    action={
+                      rulePackageStatus[type].needs_update && onUpdateRulePackage && (
+                        <Button
+                          color="inherit"
+                          size="small"
+                          onClick={() => onUpdateRulePackage(type)}
+                          disabled={isUpdatingPackage[type]}
+                          startIcon={isUpdatingPackage[type] ? <CircularProgress size={20} /> : null}
+                        >
+                          {isUpdatingPackage[type] ? 'Updating...' : 'Update Package'}
+                        </Button>
+                      )
+                    }
+                  >
+                    {type.toUpperCase()} rules package: v{rulePackageStatus[type].current_version}
+                    {rulePackageStatus[type].needs_update && 
+                      ` (v${rulePackageStatus[type].latest_version} available)`
+                    }
+                  </Alert>
+                </Box>
+              )}
               {/* Only render Alert on client-side */}
               {isClient && vectorstoreStatus && (
                 <Box sx={{ mt: 1 }}>

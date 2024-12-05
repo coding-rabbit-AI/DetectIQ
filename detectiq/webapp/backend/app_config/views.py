@@ -5,7 +5,8 @@ import keyring
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import SecretStr
-from rest_framework import status, viewsets
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -31,7 +32,7 @@ class AppConfigViewSet(viewsets.ViewSet):
 
     authentication_classes = []
     permission_classes = [AllowAny]
-    basename = "app_config"
+    basename = "app-config"
 
     @action(detail=False, methods=["GET"], url_path="get-config")
     def get_config(self, request):
@@ -201,4 +202,68 @@ class AppConfigViewSet(viewsets.ViewSet):
             logger.error(f"Error creating vectorstore: {str(e)}")
             return Response(
                 {"error": f"Failed to create vectorstore: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @async_action(detail=False, methods=["GET"], url_path="check-rule-packages")
+    async def check_rule_packages(self, request):
+        """Check if rule package updates are available."""
+        try:
+            status_data = {}
+            
+            # Use existing ruleset managers
+            managers = {
+                "sigma": SigmaRulesetManager(),
+                "yara": YaraRulesetManager(),
+                "snort": SnortRulesetManager()
+            }
+
+            for rule_type, manager in managers.items():
+                needs_update, latest_version = await manager.updater.check_for_updates()
+                status_data[rule_type] = {
+                    "current_version": manager.updater.installed_version or "Not installed",
+                    "latest_version": latest_version,
+                    "needs_update": needs_update
+                }
+
+            return Response(status_data)
+
+        except Exception as e:
+            logger.exception(f"Error checking rule packages: {str(e)}")
+            return Response(
+                {"error": f"Failed to check rule packages: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @async_action(detail=False, methods=["POST"], url_path="update-rule-package")
+    async def update_rule_package(self, request):
+        """Update specified rule package."""
+        try:
+            rule_type = request.data.get("type")
+            if not rule_type:
+                return Response(
+                    {"error": "Rule type is required"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            managers = {
+                "sigma": SigmaRulesetManager(),
+                "yara": YaraRulesetManager(),
+                "snort": SnortRulesetManager()
+            }
+
+            manager = managers.get(rule_type)
+            if not manager:
+                return Response(
+                    {"error": f"Invalid rule type: {rule_type}"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            await manager.update_rules()
+            return Response({"status": "success"})
+
+        except Exception as e:
+            logger.exception(f"Error updating rule package: {str(e)}")
+            return Response(
+                {"error": f"Failed to update rule package: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
