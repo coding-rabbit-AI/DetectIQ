@@ -1,7 +1,8 @@
 import { Card, CardContent, Typography, Box, Select, MenuItem, Chip, Tabs, Tab, TextField, FormControl, InputLabel, Button } from '@mui/material';
-import { Update as UpdateIcon } from '@mui/icons-material';
+import { Update as UpdateIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import { settingsApi } from '@/api/client';
+import Notification from '@/components/common/Notification';
 
 const SIGMA_PACKAGES = [
   { 
@@ -90,8 +91,14 @@ export default function DirectoriesSection({
 }: DirectoriesSectionProps) {
   const [selectedTab, setSelectedTab] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
   const [packageStatuses, setPackageStatuses] = useState<PackageStatuses>({});
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+    open: boolean;
+  }>({ message: '', type: 'success', open: false });
 
   useEffect(() => {
     checkRulePackages();
@@ -114,10 +121,41 @@ export default function DirectoriesSection({
     try {
       await settingsApi.updateRulePackage(type, packageType);
       await checkRulePackages(); // Refresh status after update
+      setNotification({
+        message: `Successfully updated ${type} rules`,
+        type: 'success',
+        open: true,
+      });
     } catch (error) {
       console.error('Error updating rules:', error);
+      setNotification({
+        message: `Failed to update ${type} rules`,
+        type: 'error',
+        open: true,
+      });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleRebuildVectorStore = async (type: string) => {
+    setIsRebuilding(true);
+    try {
+      await settingsApi.createVectorstore(type);
+      setNotification({
+        message: `Successfully rebuilt ${type} vector store`,
+        type: 'success',
+        open: true,
+      });
+    } catch (error) {
+      console.error(`Error rebuilding ${type} vector store:`, error);
+      setNotification({
+        message: `Failed to rebuild ${type} vector store`,
+        type: 'error',
+        open: true,
+      });
+    } finally {
+      setIsRebuilding(false);
     }
   };
 
@@ -150,146 +188,185 @@ export default function DirectoriesSection({
     );
   };
 
+  const renderActionButtons = (type: string, packageType?: string) => (
+    <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+      <Button
+        variant="outlined"
+        startIcon={<UpdateIcon />}
+        onClick={() => handleUpdateRules(type, packageType)}
+        disabled={isUpdating}
+      >
+        {isUpdating ? 'Updating Rules...' : 'Update Rules'}
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<RefreshIcon />}
+        onClick={() => handleRebuildVectorStore(type)}
+        disabled={isRebuilding}
+      >
+        {isRebuilding ? 'Rebuilding...' : 'Rebuild Vector Store'}
+      </Button>
+    </Box>
+  );
+
   return (
-    <Card elevation={2}>
-      <CardContent>
-        <Typography variant="h6" color="primary" gutterBottom>
-          Rule Directories
-        </Typography>
+    <>
+      <Card elevation={2}>
+        <CardContent>
+          <Typography variant="h6" color="primary" gutterBottom>
+            Rule Packages
+          </Typography>
 
-        <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)}>
-          <Tab label="Sigma Settings" />
-          <Tab label="YARA Settings" />
-          <Tab label="Snort Settings" />
-        </Tabs>
+          <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)}>
+            <Tab label="Sigma Settings" />
+            <Tab label="YARA Settings" />
+            <Tab label="Snort Settings" />
+          </Tabs>
 
-        {/* Sigma Settings Tab */}
-        {selectedTab === 0 && (
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Sigma Package Type</InputLabel>
-              <Select
-                value={sigmaPackageType}
-                label="Sigma Package Type"
-                onChange={(e) => onSigmaPackageTypeChange(e.target.value)}
-              >
-                {SIGMA_PACKAGES.map((pkg) => (
-                  <MenuItem key={pkg.value} value={pkg.value}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <Box>
-                        {pkg.label}
-                        <Typography variant="caption" color="textSecondary" display="block">
-                          {pkg.description}
-                        </Typography>
+          {/* Sigma Settings Tab */}
+          {selectedTab === 0 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Sigma Package Type</InputLabel>
+                <Select
+                  value={sigmaPackageType}
+                  label="Sigma Package Type"
+                  onChange={(e) => onSigmaPackageTypeChange(e.target.value)}
+                >
+                  {SIGMA_PACKAGES.map((pkg) => (
+                    <MenuItem key={pkg.value} value={pkg.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <Box>
+                          {pkg.label}
+                          <Typography variant="caption" color="textSecondary" display="block">
+                            {pkg.description}
+                          </Typography>
+                        </Box>
+                        {pkg.recommended && (
+                          <Chip 
+                            label="Recommended" 
+                            size="small" 
+                            color="primary" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </Box>
-                      {pkg.recommended && (
-                        <Chip 
-                          label="Recommended" 
-                          size="small" 
-                          color="primary" 
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {renderUpdateStatus('sigma')}
-            <Typography variant="subtitle2" gutterBottom>Sigma Rule Directory</Typography>
-            <TextField
-              value={ruleDirectories.sigma || ''}
-              onChange={(e) => onRuleDirectoryChange('sigma', e.target.value)}
-              fullWidth
-              variant="outlined"
-              sx={{ mb: 2 }}
-            />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {renderUpdateStatus('sigma')}
+              <Typography variant="subtitle2" gutterBottom>Sigma Rule Directory</Typography>
+              <TextField
+                value={ruleDirectories.sigma || ''}
+                onChange={(e) => onRuleDirectoryChange('sigma', e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ mb: 2 }}
+                helperText="Rule packages are saved and extracted here. Contents are deleted and overwritten upon updating."
+              />
 
-            <Typography variant="subtitle2" gutterBottom>Sigma Vector Store Directory</Typography>
-            <TextField
-              value={vectorStoreDirectories.sigma || ''}
-              onChange={(e) => onVectorStoreDirectoryChange('sigma', e.target.value)}
-              fullWidth
-              variant="outlined"
-            />
-          </Box>
-        )}
+              <Typography variant="subtitle2" gutterBottom>Sigma Vector Store Directory</Typography>
+              <TextField
+                value={vectorStoreDirectories.sigma || ''}
+                onChange={(e) => onVectorStoreDirectoryChange('sigma', e.target.value)}
+                fullWidth
+                variant="outlined"
+                helperText="Vector stores will be created here."
+              />
+              {renderActionButtons('sigma', sigmaPackageType)}
+            </Box>
+          )}
 
-        {/* YARA Settings Tab */}
-        {selectedTab === 1 && (
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>YARA Package Type</InputLabel>
-              <Select
-                value={yaraPackageType}
-                label="YARA Package Type"
-                onChange={(e) => onYaraPackageTypeChange(e.target.value)}
-              >
-                {YARA_PACKAGES.map((pkg) => (
-                  <MenuItem key={pkg.value} value={pkg.value}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <Box>
-                        {pkg.label}
-                        <Typography variant="caption" color="textSecondary" display="block">
-                          {pkg.description}
-                        </Typography>
+          {/* YARA Settings Tab */}
+          {selectedTab === 1 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>YARA Package Type</InputLabel>
+                <Select
+                  value={yaraPackageType}
+                  label="YARA Package Type"
+                  onChange={(e) => onYaraPackageTypeChange(e.target.value)}
+                >
+                  {YARA_PACKAGES.map((pkg) => (
+                    <MenuItem key={pkg.value} value={pkg.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <Box>
+                          {pkg.label}
+                          <Typography variant="caption" color="textSecondary" display="block">
+                            {pkg.description}
+                          </Typography>
+                        </Box>
+                        {pkg.recommended && (
+                          <Chip 
+                            label="Recommended" 
+                            size="small" 
+                            color="primary" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </Box>
-                      {pkg.recommended && (
-                        <Chip 
-                          label="Recommended" 
-                          size="small" 
-                          color="primary" 
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {renderUpdateStatus('yara')}
-            <Typography variant="subtitle2" gutterBottom>YARA Rule Directory</Typography>
-            <TextField
-              value={ruleDirectories.yara || ''}
-              onChange={(e) => onRuleDirectoryChange('yara', e.target.value)}
-              fullWidth
-              variant="outlined"
-              sx={{ mb: 2 }}
-            />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {renderUpdateStatus('yara')}
+              <Typography variant="subtitle2" gutterBottom>YARA Rule Directory</Typography>
+              <TextField
+                value={ruleDirectories.yara || ''}
+                onChange={(e) => onRuleDirectoryChange('yara', e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ mb: 2 }}
+                helperText="Rule packages are saved and extracted here. Contents are deleted and overwritten upon updating."
+              />
 
-            <Typography variant="subtitle2" gutterBottom>YARA Vector Store Directory</Typography>
-            <TextField
-              value={vectorStoreDirectories.yara || ''}
-              onChange={(e) => onVectorStoreDirectoryChange('yara', e.target.value)}
-              fullWidth
-              variant="outlined"
-            />
-          </Box>
-        )}
+              <Typography variant="subtitle2" gutterBottom>YARA Vector Store Directory</Typography>
+              <TextField
+                value={vectorStoreDirectories.yara || ''}
+                onChange={(e) => onVectorStoreDirectoryChange('yara', e.target.value)}
+                fullWidth
+                variant="outlined"
+                helperText="Vector stores will be created here."
+              />
+              {renderActionButtons('yara', yaraPackageType)}
+            </Box>
+          )}
 
-        {/* Snort Settings Tab */}
-        {selectedTab === 2 && (
-          <Box sx={{ mt: 2 }}>
-            {renderUpdateStatus('snort')}
-            <Typography variant="subtitle2" gutterBottom>Snort Rule Directory</Typography>
-            <TextField
-              value={ruleDirectories.snort || ''}
-              onChange={(e) => onRuleDirectoryChange('snort', e.target.value)}
-              fullWidth
-              variant="outlined"
-              sx={{ mb: 2 }}
-            />
+          {/* Snort Settings Tab */}
+          {selectedTab === 2 && (
+            <Box sx={{ mt: 2 }}>
+              {renderUpdateStatus('snort')}
+              <Typography variant="subtitle2" gutterBottom>Snort Rule Directory</Typography>
+              <TextField
+                value={ruleDirectories.snort || ''}
+                onChange={(e) => onRuleDirectoryChange('snort', e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ mb: 2 }}
+                helperText="Rule packages are saved and extracted here. Contents are deleted and overwritten upon updating."
+              />
 
-            <Typography variant="subtitle2" gutterBottom>Snort Vector Store Directory</Typography>
-            <TextField
-              value={vectorStoreDirectories.snort || ''}
-              onChange={(e) => onVectorStoreDirectoryChange('snort', e.target.value)}
-              fullWidth
-              variant="outlined"
-            />
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+              <Typography variant="subtitle2" gutterBottom>Snort Vector Store Directory</Typography>
+              <TextField
+                value={vectorStoreDirectories.snort || ''}
+                onChange={(e) => onVectorStoreDirectoryChange('snort', e.target.value)}
+                fullWidth
+                variant="outlined"
+                helperText="Vector stores will be created here."
+              />
+              {renderActionButtons('snort')}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Notification
+        open={notification.open}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification({ ...notification, open: false })}
+      />
+    </>
   );
 } 
