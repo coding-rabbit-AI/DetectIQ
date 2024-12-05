@@ -36,7 +36,7 @@ export default function IntegrationsSection({
 
   const handleTestIntegration = async (integration: string) => {
     try {
-      const response = await fetch('/api/app-config/test_integration/', {
+      const response = await fetch('/api/app-config/test-integration/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ integration }),

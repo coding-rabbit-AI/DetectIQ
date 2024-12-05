@@ -28,8 +28,8 @@ const nextConfig = {
         basePath: false
       },
       {
-        source: '/api/app-config/test_integration/',
-        destination: 'http://127.0.0.1:8000/app-config/test_integration/',
+        source: '/api/app-config/test-integration/',
+        destination: 'http://127.0.0.1:8000/app-config/test-integration/',
         basePath: false
       },
       {

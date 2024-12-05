@@ -39,7 +39,7 @@ export const settingsApi = {
     return response.json();
   },
   testIntegration: async (integration: string): Promise<{success: boolean; message: string}> => {
-    const response = await fetch('/api/app-config/test_integration/', {
+    const response = await fetch('/api/app-config/test-integration/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
