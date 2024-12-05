@@ -105,44 +105,69 @@ export const settingsApi = {
 
 export const rulesApi = {
   getRules: async (filters?: RuleFilters): Promise<PaginatedResponse<Rule>> => {
-    const response = await apiClient.get<PaginatedResponse<Rule>>('/api/rules/', { 
-      params: filters 
-    });
-    return response.data;
+    const queryParams = new URLSearchParams(filters as Record<string, string>);
+    const response = await fetch(`/api/rules/?${queryParams}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rules');
+    }
+    return response.json();
   },
 
   getRulesByType: async (type: RuleType): Promise<PaginatedResponse<Rule>> => {
-    const response = await apiClient.get<PaginatedResponse<Rule>>(`/api/rules/${type}/`);
-    return response.data;
+    const response = await fetch(`/api/rules/${type}/`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rules by type');
+    }
+    return response.json();
   },
 
   searchRules: async (type: RuleType, query: string): Promise<PaginatedResponse<Rule>> => {
-    const response = await apiClient.get<PaginatedResponse<Rule>>(`/api/rules/${type}/search/`, {
-      params: { q: query }
-    });
-    return response.data;
+    const response = await fetch(`/api/rules/${type}/search/?q=${encodeURIComponent(query)}`);
+    if (!response.ok) {
+      throw new Error('Failed to search rules');
+    }
+    return response.json();
   },
 
   updateRule: async (ruleId: string, updates: Partial<Rule>): Promise<Rule> => {
-    const response = await apiClient.patch<Rule>(`/api/rules/${ruleId}/`, updates);
-    return response.data;
+    const response = await fetch(`/api/rules/${ruleId}/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update rule');
+    }
+    return response.json();
   },
 
   deleteRule: async (ruleId: string): Promise<void> => {
-    await apiClient.delete(`/api/rules/${ruleId}/`);
+    const response = await fetch(`/api/rules/${ruleId}/`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete rule');
+    }
   },
 
   deployRule: async (ruleId: string, integration: string): Promise<{success: boolean; message: string}> => {
-    const response = await apiClient.post<{success: boolean; message: string}>(
-      `/api/rules/${ruleId}/deploy/`,
-      { integration }
-    );
-    return response.data;
+    const response = await fetch(`/api/rules/${ruleId}/deploy/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ integration })
+    });
+    if (!response.ok) {
+      throw new Error('Failed to deploy rule');
+    }
+    return response.json();
   },
 
   getRule: async (id: string): Promise<Rule> => {
-    const response = await apiClient.get<Rule>(`/api/rules/${id}/`);
-    return response.data;
+    const response = await fetch(`/api/rules/${id}/`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rule');
+    }
+    return response.json();
   },
 }; 
 

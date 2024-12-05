@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 import yaml
 from sigmaiq import SigmAIQBackend
 
+from detectiq.core.integrations.base import SIEMCredentials
 from detectiq.core.integrations.elastic import ElasticIntegration
 from detectiq.core.integrations.microsoft_xdr import MicrosoftXDRIntegration
 from detectiq.core.integrations.splunk import SplunkCredentials, SplunkIntegration
@@ -124,10 +125,10 @@ class RuleDeploymentService:
 
         return base_config
 
-    def _get_integration(self, integration_type: str, config: Dict[str, Any]):
+    def _get_integration(self, integration_type: str, config: SIEMCredentials):
         """Get integration instance based on type."""
         if integration_type == "splunk":
-            return SplunkIntegration()
+            return SplunkIntegration(credentials=config)
         elif integration_type == "elastic":
             return ElasticIntegration()
         elif integration_type == "microsoft_xdr":

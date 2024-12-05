@@ -12,6 +12,12 @@ const nextConfig = {
         destination: 'http://127.0.0.1:8000/rules/:path*/',
         basePath: false
       },
+      // Deploy endpoint
+      {
+        source: '/api/rules/:id/deploy/',
+        destination: 'http://127.0.0.1:8000/rules/:id/deploy/',
+        basePath: false
+      },
       {
         source: '/api/app-config/:path*/',
         destination: 'http://127.0.0.1:8000/app-config/:path*/',
