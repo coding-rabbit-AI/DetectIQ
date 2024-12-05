@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Type, cast
 
 import keyring
@@ -14,6 +15,11 @@ from detectiq.core.integrations import get_integration
 from detectiq.core.integrations.base import BaseSIEMIntegration
 from detectiq.core.integrations.splunk import SplunkCredentials
 from detectiq.core.utils.logging import get_logger
+from detectiq.webapp.backend.services.ruleset_manager import (
+    SigmaRulesetManager,
+    SnortRulesetManager,
+    YaraRulesetManager,
+)
 from detectiq.webapp.backend.utils.decorators import async_action
 
 logger = get_logger(__name__)
@@ -143,4 +149,48 @@ class AppConfigViewSet(viewsets.ViewSet):
             logger.error(f"Error testing integration: {str(e)}")
             return Response(
                 {"error": f"Failed to test integration: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=["GET"], url_path="check-vectorstores")
+    def check_vectorstores(self, request):
+        """Check if vectorstores exist for each rule type."""
+        try:
+            status = {}
+            for rule_type in ["sigma", "yara", "snort"]:
+                vector_store_dir = Path(config_manager.config.vector_store_directories[rule_type])
+                status[rule_type] = {
+                    "exists": (
+                        vector_store_dir.exists()
+                        and (vector_store_dir / "index.faiss").exists()
+                        and (vector_store_dir / "index.pkl").exists()
+                    )
+                }
+            return Response(status)
+        except Exception as e:
+            logger.exception(f"Error checking vectorstores: {str(e)}")
+            return Response(
+                {"error": f"Failed to check vectorstores: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @async_action(detail=False, methods=["POST"], url_path="create-vectorstore")
+    async def create_vectorstore(self, request):
+        """Create vectorstore for specified rule type."""
+        try:
+            rule_type = request.data.get("type")
+            if not rule_type:
+                return Response({"error": "Rule type is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            managers = {"sigma": SigmaRulesetManager(), "yara": YaraRulesetManager(), "snort": SnortRulesetManager()}
+
+            manager = managers.get(rule_type)
+            if not manager:
+                return Response({"error": f"Invalid rule type: {rule_type}"}, status=status.HTTP_400_BAD_REQUEST)
+
+            await manager.create_vector_store()
+            return Response({"status": "success"})
+
+        except Exception as e:
+            logger.error(f"Error creating vectorstore: {str(e)}")
+            return Response(
+                {"error": f"Failed to create vectorstore: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   trailingSlash: true,
+  experimental: {
+    proxyTimeout: 600000, // 10 minutes
+  },
   async rewrites() {
     return [
       // API endpoints only - not the page itself

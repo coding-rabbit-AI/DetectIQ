@@ -51,6 +51,26 @@ export const settingsApi = {
     }
     return response.json();
   },
+  checkVectorstores: async () => {
+    const response = await fetch('/api/app-config/check-vectorstores/');
+    if (!response.ok) {
+      throw new Error('Failed to check vectorstores');
+    }
+    return response.json();
+  },
+  createVectorstore: async (type: string) => {
+    const response = await fetch('/api/app-config/create-vectorstore/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create vectorstore');
+    }
+    return response.json();
+  },
 };
 
 export const rulesApi = {
