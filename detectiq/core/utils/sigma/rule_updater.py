@@ -31,12 +31,7 @@ class SigmaRuleUpdater:
     }
 
     def __init__(self, rule_dir: Optional[str] = None, package_type: str = "core"):
-        """Initialize SigmaRuleUpdater.
-
-        Args:
-            rule_dir: Directory to store rules. Defaults to DEFAULT_DIRS.SIGMA_RULE_DIR
-            package_type: Type of rule package to download ("core", "core+", "core++", etc.)
-        """
+        """Initialize SigmaRuleUpdater."""
         self.rule_dir = Path(rule_dir) if rule_dir else DEFAULT_DIRS.SIGMA_RULE_DIR
         self.rule_dir.mkdir(parents=True, exist_ok=True)
 
@@ -44,17 +39,20 @@ class SigmaRuleUpdater:
             raise ValueError(f"Invalid package type. Must be one of: {list(self.RULE_PACKAGES.keys())}")
         self.package_type = package_type
 
-        # Store individual rules in a subdirectory
-        self.individual_rules_dir = self.rule_dir / "individual_rules"
-        self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
-
-        self.installed_version = None
+        self.version_file = self.rule_dir / "version.txt"
+        self.installed_version = self._read_installed_version()
 
         # Initialize YAML parser with roundtrip mode
         self.yaml = YAML()
         self.yaml.preserve_quotes = True
         self.yaml.indent(mapping=2, sequence=4, offset=2)
         self.yaml.width = 4096  # Prevent line wrapping
+
+    def _read_installed_version(self) -> Optional[str]:
+        if self.version_file.exists():
+            with open(self.version_file, "r") as f:
+                return f.read().strip()
+        return None
 
     async def check_for_updates(self) -> Tuple[bool, Optional[str]]:
         """Check if updates are available."""
@@ -111,11 +109,8 @@ class SigmaRuleUpdater:
             if self.rule_dir.exists():
                 logger.info("Cleaning rule directory")
                 try:
-                    # Remove directory and all its contents recursively
                     shutil.rmtree(self.rule_dir)
-                    # Recreate empty directories
                     self.rule_dir.mkdir(parents=True, exist_ok=True)
-                    self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
                     logger.info("Successfully cleaned rule directory")
                 except Exception as e:
                     logger.error(f"Error cleaning rule directory: {e}")
@@ -136,60 +131,26 @@ class SigmaRuleUpdater:
                     if file_info.filename.endswith(".yml"):
                         zf.extract(file_info, self.rule_dir)
 
-            # Parse and save individual rules
-            await self._save_individual_rules()
-
             # Update installed version
             self.installed_version = latest_version
+            with open(self.version_file, "w") as f:
+                f.write(latest_version)
             logger.info(f"Updated to version {latest_version}")
 
         except Exception as e:
             raise RuntimeError(f"Failed to update rules: {str(e)}")
 
-    async def _save_individual_rules(self) -> None:
-        """Parse and save individual rules with preserved ordering."""
-        try:
-            self.individual_rules_dir.mkdir(parents=True, exist_ok=True)
-
-            # Process each YAML file
-            for rule_file in self.rule_dir.glob("**/*.yml"):
-                if rule_file.is_file():
-                    try:
-                        with open(rule_file) as f:
-                            rule_data = self.yaml.load(f)
-
-                            # Skip non-rule files
-                            if not isinstance(rule_data, dict) or "detection" not in rule_data:
-                                continue
-
-                            # Save individual rule
-                            rule_name = rule_data.get("title", "").replace(" ", "_")
-                            if rule_name:
-                                output_path = self.individual_rules_dir / f"{rule_name}.yml"
-                                output_path.parent.mkdir(parents=True, exist_ok=True)
-
-                                with open(output_path, "w") as out_f:
-                                    self.yaml.dump(rule_data, out_f)
-
-                    except Exception as e:
-                        logger.warning(f"Failed to process rule file {rule_file}: {e}")
-                        continue
-
-            logger.info(f"Saved individual rules to {self.individual_rules_dir}")
-
-        except Exception as e:
-            raise RuntimeError(f"Failed to save individual rules: {str(e)}")
-
     async def load_rules(self) -> List[Dict[str, Any]]:
-        """Load rules for vectorstore creation with preserved ordering."""
+        """Load rules for vectorstore creation."""
         rules = []
 
         try:
-            if not self.individual_rules_dir.exists():
-                logger.warning("Individual rules directory does not exist")
+            if not self.rule_dir.exists():
+                logger.warning("Rules directory does not exist")
                 return rules
 
-            for rule_file in self.individual_rules_dir.glob("*.yml"):
+            # Process each YAML file in the rules directory and its subdirectories
+            for rule_file in self.rule_dir.glob("**/*.yml"):
                 try:
                     with open(rule_file) as f:
                         rule_data = self.yaml.load(f)

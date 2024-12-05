@@ -3,10 +3,10 @@ import os
 from pathlib import Path
 from typing import List
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand
 
+from detectiq.core.config import config
 from detectiq.core.utils.logging import get_logger
 from detectiq.webapp.backend.services.ruleset_manager.ruleset_manager import RulesetManager
 
@@ -41,13 +41,13 @@ class Command(BaseCommand):
     ):
         """Async initialization of rulesets."""
         try:
-            if create_vectorstores and not settings.OPENAI_API_KEY:
+            if create_vectorstores and not config.openai_api_key:
                 raise ImproperlyConfigured("OPENAI_API_KEY must be set to create vector stores")
 
             # Convert string paths to Path objects
             rule_dirs = {
                 rule_type: Path(path) if isinstance(path, str) else path
-                for rule_type, path in settings.RULE_DIRS.items()
+                for rule_type, path in config.rule_directories.items()
             }
 
             if not all(rule_dirs.values()):
@@ -83,8 +83,8 @@ class Command(BaseCommand):
 
             # Debug prints
             if create_vectorstores:
-                self.stdout.write(f"OpenAI API Key configured: {bool(settings.OPENAI_API_KEY)}")
-            self.stdout.write(f"Rule directories configured: {settings.RULE_DIRS}")
+                self.stdout.write(f"OpenAI API Key configured: {bool(config.openai_api_key)}")
+            self.stdout.write(f"Rule directories configured: {config.rule_directories}")
             self.stdout.write(f"Rule types to initialize: {', '.join(rule_types)}")
 
             # Run initialization

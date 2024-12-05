@@ -2,9 +2,9 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from django.conf import settings
 from langchain_openai import OpenAIEmbeddings
 
+from detectiq.core.config import config
 from detectiq.core.llm.tools.yara.create_yara_rule import CreateYaraRuleTool
 from detectiq.core.llm.yara_rules import YaraLLM
 from detectiq.core.utils.logging import get_logger
@@ -15,11 +15,19 @@ logger = get_logger(__name__)
 
 
 class YaraRulesetManager:
-    def __init__(self):
+    def __init__(
+        self,
+        rule_dir: Optional[str] = None,
+        vector_store_dir: Optional[str] = None,
+        embedding_model: Optional[str] = None,
+        package_type: Optional[str] = None,
+    ):
         """Initialize the YARA ruleset manager."""
-        self.rule_dir = settings.RULE_DIRS["yara"]
-        self.vector_store_dir = settings.VECTOR_STORE_DIRS["yara"]
+        self.rule_dir = Path(rule_dir or config.rule_directories.get("yara"))
+        self.vector_store_dir = Path(vector_store_dir or config.vector_store_directories.get("yara"))
         self.rule_repository = DjangoRuleRepository()
+        self.embedding_model = embedding_model or OpenAIEmbeddings(model=config.embedding_model)
+        self.package_type = package_type or config.yara_package_type or "core"
 
         # Initialize rule updater
         self.updater = YaraRuleUpdater(rule_dir=str(self.rule_dir))

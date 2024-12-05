@@ -29,7 +29,7 @@ interface IntegrationsSectionProps {
 const IMPLEMENTED_INTEGRATIONS = ['splunk'];
 
 export default function IntegrationsSection({ 
-  integrations, 
+  integrations = {}, 
   onIntegrationChange 
 }: IntegrationsSectionProps) {
   const [testResults, setTestResults] = useState<{

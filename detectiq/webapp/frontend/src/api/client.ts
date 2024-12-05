@@ -31,7 +31,10 @@ export const settingsApi = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(settings),
+      body: JSON.stringify({
+        ...settings,
+        sigma_package_type: settings.sigma_package_type || 'core'
+      }),
     });
     if (!response.ok) {
       throw new Error('Failed to update settings');
@@ -78,16 +81,23 @@ export const settingsApi = {
     }
     return response.json();
   },
-  updateRulePackage: async (type: string) => {
+  updateRulePackage: async (type: string, packageType?: string) => {
     const response = await fetch('/api/app-config/update-rule-package/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ type, package_type: packageType }),
     });
     if (!response.ok) {
       throw new Error('Failed to update rule package');
+    }
+    return response.json();
+  },
+  getSigmaPackages: async () => {
+    const response = await fetch('/api/app-config/get-sigma-packages/');
+    if (!response.ok) {
+      throw new Error('Failed to fetch Sigma packages');
     }
     return response.json();
   },

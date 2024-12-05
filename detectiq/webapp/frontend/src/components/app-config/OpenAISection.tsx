@@ -9,7 +9,7 @@ interface OpenAISectionProps {
   onChange: (field: 'apiKey' | 'llmModel' | 'embeddingsModel' | 'temperature', value: string | number) => void;
 }
 
-const LLM_MODELS = [
+export const LLM_MODELS = [
   { value: 'gpt-4o', label: 'gpt-4o', recommended: true },
   { value: 'gpt-4o-latest', label: 'gpt-4o-latest' },
   { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
@@ -17,16 +17,16 @@ const LLM_MODELS = [
   { value: 'o1-mini', label: 'o1-mini' },
 ];
 
-const EMBEDDINGS_MODELS = [
+export const embedding_modelS = [
   { value: 'text-embedding-3-small', label: 'text-embedding-3-small', recommended: true },
   { value: 'text-embedding-3-large', label: 'text-embedding-3-large' },
   { value: 'text-embedding-ada-002', label: 'text-embedding-ada-002' },
 ];
 
 export default function OpenAISection({ 
-  apiKey, 
-  llmModel, 
-  embeddingsModel,
+  apiKey = '', 
+  llmModel = LLM_MODELS[0].value, 
+  embeddingsModel = embedding_modelS[0].value,
   temperature = 0.1,
   onChange 
 }: OpenAISectionProps) {
@@ -102,17 +102,7 @@ export default function OpenAISection({
                         label="Recommended" 
                         size="small" 
                         color="primary" 
-                        sx={{ 
-                          ml: 1,
-                          backgroundColor: 'rgba(97, 84, 163, 0.15)',
-                          color: '#6154a3',
-                          border: '1px solid rgba(97, 84, 163, 0.2)',
-                          height: '20px',
-                          '& .MuiChip-label': {
-                            px: 1,
-                            fontSize: '0.625rem',
-                          }
-                        }}
+                        sx={{ ml: 1 }}
                       />
                     )}
                   </Box>
@@ -128,7 +118,7 @@ export default function OpenAISection({
               label="Embeddings Model"
               onChange={(e) => onChange('embeddingsModel', e.target.value)}
             >
-              {EMBEDDINGS_MODELS.map((model) => (
+              {embedding_modelS.map((model) => (
                 <MenuItem key={model.value} value={model.value}>
                   <Box sx={{ 
                     display: 'flex', 
@@ -142,17 +132,7 @@ export default function OpenAISection({
                         label="Recommended" 
                         size="small" 
                         color="primary" 
-                        sx={{ 
-                          ml: 1,
-                          backgroundColor: 'rgba(97, 84, 163, 0.15)',
-                          color: '#6154a3',
-                          border: '1px solid rgba(97, 84, 163, 0.2)',
-                          height: '20px',
-                          '& .MuiChip-label': {
-                            px: 1,
-                            fontSize: '0.625rem',
-                          }
-                        }}
+                        sx={{ ml: 1 }}
                       />
                     )}
                   </Box>

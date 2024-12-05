@@ -76,7 +76,14 @@ class YaraRuleUpdater:
         if package_type not in self.RULE_PACKAGES:
             raise ValueError(f"Invalid package type. Must be one of: {list(self.RULE_PACKAGES.keys())}")
         self.package_type = package_type
-        self.installed_version = None
+        self.version_file = self.rule_dir / "version.txt"
+        self.installed_version = self._read_installed_version()
+
+    def _read_installed_version(self) -> Optional[str]:
+        if self.version_file.exists():
+            with open(self.version_file, "r") as f:
+                return f.read().strip()
+        return None
 
     async def update_rules(self, force: bool = False) -> None:
         """Download and update rules."""
@@ -134,6 +141,8 @@ class YaraRuleUpdater:
 
             # Update installed version
             self.installed_version = latest_version
+            with open(self.version_file, "w") as f:
+                f.write(latest_version)
             logger.info(f"Updated to version {latest_version}")
 
         except Exception as e:
@@ -222,10 +231,7 @@ class YaraRuleUpdater:
                     latest_release = await response.json()
                     latest_version = latest_release["tag_name"]
 
-                    if not self.installed_version or self.installed_version != latest_version:
-                        return True, latest_version
-
-                    return False, latest_version
+                    return self.installed_version != latest_version, latest_version
 
         except Exception as e:
             raise RuntimeError(f"Failed to check for updates: {str(e)}")

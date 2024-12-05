@@ -43,7 +43,7 @@ class RuleCreatorViewSet(viewsets.ViewSet):
 
         # Initialize LLM and embeddings
         self.llm = ChatOpenAI(model=self.detectiq_config.llm_model, temperature=self.detectiq_config.temperature)
-        self.embeddings = OpenAIEmbeddings(model=self.detectiq_config.embeddings_model)
+        self.embeddings = OpenAIEmbeddings(model=self.detectiq_config.embedding_model)
 
         # Initialize vector stores
         self.sigmadb = self._init_vector_store("sigma")

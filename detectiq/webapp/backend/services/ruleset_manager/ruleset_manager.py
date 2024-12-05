@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from langchain_openai import OpenAIEmbeddings
 
+from detectiq.core.config import config
 from detectiq.core.llm.sigma_rules import SigmaLLM
 from detectiq.core.llm.snort_rules import SnortLLM
 from detectiq.core.llm.yara_rules import YaraLLM
@@ -28,8 +28,8 @@ class RulesetManager:
     def __init__(self):
         """Initialize the ruleset manager."""
         logger.info("Initializing RulesetManager")
-        self.rule_dirs = settings.RULE_DIRS
-        self.vector_store_dirs = settings.VECTOR_STORE_DIRS
+        self.rule_dirs = config.rule_directories
+        self.vector_store_dirs = config.vector_store_directories
         self.rule_repository = DjangoRuleRepository()
 
         # Ensure directories exist and are Path objects

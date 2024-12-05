@@ -5,8 +5,7 @@ import keyring
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import SecretStr
-from rest_framework import status
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -55,7 +54,7 @@ class AppConfigViewSet(viewsets.ViewSet):
             response_data = {
                 "openai_api_key": current_config.openai_api_key,
                 "llm_model": current_config.llm_model,
-                "embeddings_model": current_config.embeddings_model,
+                "embedding_model": current_config.embedding_model,
                 "temperature": current_config.temperature,
                 "rule_directories": current_config.rule_directories,
                 "vector_store_directories": current_config.vector_store_directories,
@@ -209,20 +208,16 @@ class AppConfigViewSet(viewsets.ViewSet):
         """Check if rule package updates are available."""
         try:
             status_data = {}
-            
+
             # Use existing ruleset managers
-            managers = {
-                "sigma": SigmaRulesetManager(),
-                "yara": YaraRulesetManager(),
-                "snort": SnortRulesetManager()
-            }
+            managers = {"sigma": SigmaRulesetManager(), "yara": YaraRulesetManager(), "snort": SnortRulesetManager()}
 
             for rule_type, manager in managers.items():
                 needs_update, latest_version = await manager.updater.check_for_updates()
                 status_data[rule_type] = {
                     "current_version": manager.updater.installed_version or "Not installed",
                     "latest_version": latest_version,
-                    "needs_update": needs_update
+                    "needs_update": needs_update,
                 }
 
             return Response(status_data)
@@ -230,8 +225,7 @@ class AppConfigViewSet(viewsets.ViewSet):
         except Exception as e:
             logger.exception(f"Error checking rule packages: {str(e)}")
             return Response(
-                {"error": f"Failed to check rule packages: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": f"Failed to check rule packages: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     @async_action(detail=False, methods=["POST"], url_path="update-rule-package")
@@ -239,24 +233,19 @@ class AppConfigViewSet(viewsets.ViewSet):
         """Update specified rule package."""
         try:
             rule_type = request.data.get("type")
+            package_type = request.data.get("package_type")
             if not rule_type:
-                return Response(
-                    {"error": "Rule type is required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "Rule type is required"}, status=status.HTTP_400_BAD_REQUEST)
 
             managers = {
-                "sigma": SigmaRulesetManager(),
+                "sigma": SigmaRulesetManager(package_type=package_type),
                 "yara": YaraRulesetManager(),
-                "snort": SnortRulesetManager()
+                "snort": SnortRulesetManager(),
             }
 
             manager = managers.get(rule_type)
             if not manager:
-                return Response(
-                    {"error": f"Invalid rule type: {rule_type}"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": f"Invalid rule type: {rule_type}"}, status=status.HTTP_400_BAD_REQUEST)
 
             await manager.update_rules()
             return Response({"status": "success"})
@@ -264,6 +253,12 @@ class AppConfigViewSet(viewsets.ViewSet):
         except Exception as e:
             logger.exception(f"Error updating rule package: {str(e)}")
             return Response(
-                {"error": f"Failed to update rule package: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": f"Failed to update rule package: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=["GET"], url_path="get-sigma-packages")
+    def get_sigma_packages(self, request):
+        """Get available Sigma rule packages."""
+        from detectiq.core.utils.sigma.rule_updater import SigmaRuleUpdater
+
+        return Response({"packages": list(SigmaRuleUpdater.RULE_PACKAGES.keys())})

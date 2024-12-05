@@ -53,7 +53,7 @@ class DetectIQConfig(BaseModel):
 
     openai_api_key: str = Field(default="")
     llm_model: str = Field(default="gpt-4o")
-    embeddings_model: str = Field(default="text-embedding-3-small")
+    embedding_model: str = Field(default="text-embedding-3-small")
     temperature: float = Field(default=round(float(os.getenv("LLM_TEMPERATURE", 0.10)), 2))
     rule_directories: dict = Field(
         default_factory=lambda: {
@@ -62,6 +62,7 @@ class DetectIQConfig(BaseModel):
             "snort": os.getenv("SNORT_RULE_DIR", str(DEFAULT_DIRS.SNORT_RULE_DIR)),
         }
     )
+    sigma_package_type: str = Field(default="core")
     vector_store_directories: dict = Field(
         default_factory=lambda: {
             "sigma": str(DEFAULT_DIRS.SIGMA_VECTOR_STORE_DIR),
@@ -72,6 +73,7 @@ class DetectIQConfig(BaseModel):
     log_level: str = Field(default="INFO")
     model: str = Field(default="gpt-4o")
     integrations: Integrations = Field(default_factory=Integrations)
+    yara_package_type: str = Field(default="core")
 
     @property
     def RULE_DIRS(self):
@@ -107,7 +109,7 @@ class ConfigManager:
             "openai_api_key": keyring.get_password(self.APP_NAME, "openai_api_key") or os.getenv("OPENAI_API_KEY", ""),
             "llm_model": os.getenv("LLM_MODEL", "gpt-4o"),
             "temperature": round(float(os.getenv("LLM_TEMPERATURE", 0.10)), 2),
-            "embeddings_model": os.getenv("EMBEDDINGS_MODEL", "text-embedding-3-small"),
+            "embedding_model": os.getenv("embedding_model", "text-embedding-3-small"),
             "rule_directories": {
                 "sigma": os.getenv("SIGMA_RULE_DIR", str(DEFAULT_DIRS.SIGMA_RULE_DIR)),
                 "yara": os.getenv("YARA_RULE_DIR", str(DEFAULT_DIRS.YARA_RULE_DIR)),
@@ -120,6 +122,8 @@ class ConfigManager:
             },
             "log_level": os.getenv("DETECTIQ_LOG_LEVEL", "INFO"),
             "integrations": {},
+            "sigma_package_type": os.getenv("SIGMA_PACKAGE_TYPE", "core"),
+            "yara_package_type": os.getenv("YARA_PACKAGE_TYPE", "core"),
         }
 
     def save_config(self):

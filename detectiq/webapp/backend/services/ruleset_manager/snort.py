@@ -2,9 +2,9 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from django.conf import settings
 from langchain_openai import OpenAIEmbeddings
 
+from detectiq.core.config import config
 from detectiq.core.llm.snort_rules import SnortLLM
 from detectiq.core.llm.tools.snort.create_snort_rule import CreateSnortRuleTool
 from detectiq.core.utils.logging import get_logger
@@ -15,11 +15,19 @@ logger = get_logger(__name__)
 
 
 class SnortRulesetManager:
-    def __init__(self):
+    def __init__(
+        self,
+        rule_dir: Optional[str] = None,
+        vector_store_dir: Optional[str] = None,
+        package_type: Optional[str] = None,
+        embedding_model: Optional[str] = None,
+    ):
         """Initialize the Snort ruleset manager."""
-        self.rule_dir = settings.RULE_DIRS["snort"]
-        self.vector_store_dir = settings.VECTOR_STORE_DIRS["snort"]
+        self.rule_dir = Path(rule_dir or config.rule_directories["snort"])
+        self.vector_store_dir = Path(vector_store_dir or config.vector_store_directories["snort"])
         self.rule_repository = DjangoRuleRepository()
+        self.package_type = package_type or config.yara_package_type or "core"
+        self.embedding_model = embedding_model or OpenAIEmbeddings(model=config.embedding_model)
 
         # Initialize rule updater
         self.updater = SnortRuleUpdater(rule_dir=str(self.rule_dir))
@@ -29,7 +37,7 @@ class SnortRulesetManager:
             rule_dir=str(self.rule_dir),
             auto_update=False,
             vector_store_dir=str(self.vector_store_dir),
-            embedding_model=OpenAIEmbeddings(model="text-embedding-3-small"),
+            embedding_model=self.embedding_model,
         )
 
     async def verify_rule(self, rule_content: str, pcap_content: bytes):

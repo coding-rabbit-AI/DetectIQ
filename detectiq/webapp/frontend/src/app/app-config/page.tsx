@@ -12,19 +12,22 @@ import PageLayout from '@/components/layout/PageLayout';
 import DirectoriesSection from '@/components/app-config/DirectoriesSection';
 import IntegrationsSection from '@/components/app-config/IntegrationsSection';
 import OpenAISection from '@/components/app-config/OpenAISection';
+import { LLM_MODELS, embedding_modelS } from '@/components/app-config/OpenAISection';
 
 export default function SettingsPage() {
   const { data: savedSettings, isLoading } = useSettings();
   const [settings, setSettings] = useState<Settings>({
     openai_api_key: '',
+    llm_model: LLM_MODELS[0].value,
+    embedding_model: embedding_modelS[0].value,
+    temperature: 0.1,
     rule_directories: {
       sigma: '',
       yara: '',
       snort: '',
     },
-    llm_model: '',
-    embeddings_model: '',
-    temperature: 0.1,
+    sigma_package_type: 'core',
+    yara_package_type: 'core',
     vector_store_directories: {
       sigma: '',
       yara: '',
@@ -56,7 +59,6 @@ export default function SettingsPage() {
         enabled: false,
       },
     },
-    
   });
 
   const [notification, setNotification] = useState<{
@@ -110,14 +112,14 @@ export default function SettingsPage() {
             <OpenAISection 
               apiKey={settings.openai_api_key}
               llmModel={settings.llm_model}
-              embeddingsModel={settings.embeddings_model}
+              embeddingsModel={settings.embedding_model}
               temperature={settings.temperature}
               onChange={(field, value) => 
                 setSettings({ 
                   ...settings, 
                   [field === 'apiKey' ? 'openai_api_key' : 
                    field === 'llmModel' ? 'llm_model' : 
-                   field === 'embeddingsModel' ? 'embeddings_model' :
+                   field === 'embeddingsModel' ? 'embedding_model' :
                    'temperature']: value 
                 })
               }
@@ -129,6 +131,20 @@ export default function SettingsPage() {
             <DirectoriesSection
               ruleDirectories={settings.rule_directories}
               vectorStoreDirectories={settings.vector_store_directories}
+              sigmaPackageType={settings.sigma_package_type}
+              yaraPackageType={settings.yara_package_type}
+              onSigmaPackageTypeChange={(value) => 
+                setSettings({
+                  ...settings,
+                  sigma_package_type: value
+                })
+              }
+              onYaraPackageTypeChange={(value) => 
+                setSettings({
+                  ...settings,
+                  yara_package_type: value
+                })
+              }
               onRuleDirectoryChange={(type, value) => 
                 setSettings({
                   ...settings,

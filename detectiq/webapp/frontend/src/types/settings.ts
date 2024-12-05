@@ -17,11 +17,13 @@ export interface IntegrationCredentials {
 export interface Settings {
   openai_api_key: string;
   llm_model: string;
-  embeddings_model: string;
+  embedding_model: string;
   temperature: number;
   rule_directories: {
     [key: string]: string;
   };
+  sigma_package_type: string;
+  yara_package_type: string;
   vector_store_directories: {
     [key: string]: string;
   };
