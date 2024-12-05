@@ -109,7 +109,7 @@ class AppConfigViewSet(viewsets.ViewSet):
                 {"error": f"Failed to update config: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @async_action(detail=False, methods=["POST"], url_path="test_integration")
+    @async_action(detail=False, methods=["POST"], url_path="test-integration")
     async def test_integration(self, request):
         try:
             integration_name = request.data.get("integration")
