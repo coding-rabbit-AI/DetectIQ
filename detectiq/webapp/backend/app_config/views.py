@@ -130,21 +130,28 @@ class AppConfigViewSet(viewsets.ViewSet):
                     {"error": f"Unknown integration type: {integration_name}"}, status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Get stored password from keyring for Splunk
-            if integration_name == "splunk":
-                stored_password = keyring.get_password(config_manager.APP_NAME, f"{integration_name}_password")
-                if stored_password:
-                    integrations_config.password = SecretStr(stored_password)
+            try:
+                # Get stored password from keyring for Splunk
+                if integration_name == "splunk":
+                    stored_password = keyring.get_password(config_manager.APP_NAME, f"{integration_name}_password")
+                    if stored_password:
+                        integrations_config.password = SecretStr(stored_password)
 
-            # Initialize integration
-            integration = IntegrationClass()
-            result = await integration.test_connection()
+                    # Ensure we're using the correct credential class
+                    if not isinstance(integrations_config, SplunkCredentials):
+                        integrations_config = SplunkCredentials(**integrations_config.model_dump())
 
-            return Response(result)
+                # Initialize integration
+                integration = IntegrationClass(credentials=integrations_config)
+                result = await integration.test_connection()
+                await integration.close()  # Ensure we close the connection
 
-        except ValueError as ve:
-            logger.error(f"Integration configuration error: {str(ve)}")
-            return Response({"error": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(result)
+
+            except ValueError as ve:
+                logger.error(f"Credential validation error: {str(ve)}")
+                return Response({"error": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
             logger.error(f"Error testing integration: {str(e)}")
             return Response(
@@ -169,7 +176,8 @@ class AppConfigViewSet(viewsets.ViewSet):
         except Exception as e:
             logger.exception(f"Error checking vectorstores: {str(e)}")
             return Response(
-                {"error": f"Failed to check vectorstores: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": f"Failed to check vectorstores: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,  # type: ignore
             )
 
     @async_action(detail=False, methods=["POST"], url_path="create-vectorstore")

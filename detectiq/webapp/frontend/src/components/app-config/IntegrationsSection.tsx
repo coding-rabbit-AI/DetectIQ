@@ -9,7 +9,9 @@ import {
   Switch, 
   FormControlLabel, 
   IconButton, 
-  Tooltip 
+  Tooltip,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { 
   Science as TestIcon,
@@ -33,6 +35,11 @@ export default function IntegrationsSection({
   const [testResults, setTestResults] = useState<{
     [key: string]: { success: boolean; message: string };
   }>({});
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   const handleTestIntegration = async (integration: string) => {
     try {
@@ -43,12 +50,26 @@ export default function IntegrationsSection({
       });
       const result = await response.json();
       setTestResults({ ...testResults, [integration]: result });
+      setSnackbar({
+        open: true,
+        message: result.message,
+        severity: result.success ? 'success' : 'error',
+      });
     } catch (error) {
       setTestResults({
         ...testResults,
         [integration]: { success: false, message: 'Test failed' },
       });
+      setSnackbar({
+        open: true,
+        message: 'Test failed',
+        severity: 'error',
+      });
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   return (
@@ -162,6 +183,16 @@ export default function IntegrationsSection({
             </Card>
           </Box>
         ))}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </CardContent>
     </Card>
   );

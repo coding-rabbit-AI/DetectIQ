@@ -17,10 +17,34 @@ class SplunkCredentials(SIEMCredentials):
     # Override parent fields with required fields
     username: str = Field(default="", description="Splunk username")
     password: SecretStr = Field(default=SecretStr(""), description="Splunk password")
-
+    host: str = Field(default="", description="Splunk host")
+    port: int = Field(default=8089, description="Splunk port")
     # Add Splunk-specific fields
     app: Optional[str] = Field(default=None, description="Splunk app context")
     owner: Optional[str] = Field(default=None, description="Splunk owner context")
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Clean and normalize the host/hostname
+        if self.hostname and not self.host:
+            self.host = self._clean_host(self.hostname)
+        elif self.host and not self.hostname:
+            self.hostname = self._clean_host(self.host)
+
+    def _clean_host(self, host: str) -> str:
+        """Clean and normalize host string."""
+        # Remove any protocol prefixes
+        if "://" in host:
+            host = host.split("://")[1]
+
+        # Remove any trailing slashes or paths
+        host = host.split("/")[0]
+
+        # Remove any port numbers if present
+        host = host.split(":")[0]
+
+        # Strip any whitespace
+        return host.strip()
 
 
 class SplunkIntegration(BaseSIEMIntegration):
@@ -33,6 +57,42 @@ class SplunkIntegration(BaseSIEMIntegration):
     def __init__(self, credentials: Optional[SplunkCredentials] = None):
         """Initialize Splunk integration."""
         super().__init__(credentials)
+
+    def _initialize_client(self) -> None:
+        """Initialize the Splunk client."""
+        if not self.credentials:
+            raise ValueError("Credentials are required for Splunk integration")
+
+        credentials = cast(SplunkCredentials, self.credentials)
+
+        # Use the cleaned host value
+        host = credentials.host
+
+        if not host:
+            raise ValueError("Host is required for Splunk integration")
+
+        try:
+            self.service = splunk_client.connect(
+                host=host,
+                port=credentials.port,
+                username=credentials.username,
+                password=credentials.password.get_secret_value() if credentials.password else "",
+                app=credentials.app,
+                owner=credentials.owner,
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to connect to Splunk: {str(e)}")
+
+    def _validate_credentials(self) -> None:
+        """Validate the provided credentials."""
+        if not self.credentials:
+            raise ValueError("Credentials are required for Splunk integration")
+
+        credentials = cast(SplunkCredentials, self.credentials)
+        if not credentials.username or not credentials.password:
+            raise ValueError("Username and password are required for Splunk integration")
+        if not (credentials.host or credentials.hostname):
+            raise ValueError("Host/hostname is required for Splunk integration")
 
     async def execute_search(self, query: str, **kwargs) -> Dict[str, Any]:
         """Execute a Splunk search query."""

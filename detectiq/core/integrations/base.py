@@ -40,6 +40,16 @@ class BaseSIEMIntegration(ABC):
     def __init__(self, credentials: Optional[SIEMCredentials] = None) -> None:
         if not self.integration_name:
             raise ValueError("Integration name is required in subclass")
+
+        if credentials and not isinstance(credentials, self.credentials_class):
+            # Try to convert the credentials to the correct type
+            try:
+                credentials = self.credentials_class(**credentials.model_dump())
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid credentials type. Expected {self.credentials_class.__name__}, got {type(credentials).__name__}: {str(e)}"
+                )
+
         self.credentials = credentials or self.credentials_class()
         self._validate_credentials()
         self._initialize_client()
