@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { Box, Typography, Grid, Card, CardContent, CircularProgress, Container } from '@mui/material';
-import { useMutation } from '@tanstack/react-query';
-import { rulesApi } from '@/api/client';
+import { useRuleCreator } from '@/hooks/useRuleCreator';
 import { Rule, RuleType } from '@/types/rules';
 import AgentAnalysisPanel from '@/components/rules/AgentAnalysisPanel';
 import RuleConfigForm from '@/components/rules/creation/RuleConfigForm';
 import PageLayout from '@/components/layout/PageLayout';
 import RulePreview from '@/components/rules/creation/RulePreview';
 import { FileAnalysisResponse, RuleCreationResponse, RuleCreationRequest } from '@/types/api';
+import { rulesApi } from '@/api/client';
 
 export default function RuleCreator() {
   const [ruleType, setRuleType] = useState<RuleType>('sigma');
@@ -20,30 +20,7 @@ export default function RuleCreator() {
   const [agentOutput, setAgentOutput] = useState<string | null>(null);
   const [ruleId, setRuleId] = useState<string | null>(null);
 
-  const createRuleMutation = useMutation<RuleCreationResponse, Error, FormData>({
-    mutationFn: async (formData: FormData) => {
-      const response = await rulesApi.createRule(formData);
-      return response as RuleCreationResponse;
-    },
-    onSuccess: (response) => {
-      if (response.content) {
-        setGeneratedRule(response.content);
-      }
-      if (response.agent_output) {
-        setAgentOutput(response.agent_output);
-      }
-      if (response.id) {
-        setRuleId(response.id);
-      }
-      setError(null);
-    },
-    onError: (error: Error) => {
-      setError(`Rule creation failed: ${error.message}`);
-      setGeneratedRule(null);
-      setAgentOutput(null);
-      setRuleId(null);
-    },
-  });
+  const createRuleMutation = useRuleCreator();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,13 +33,19 @@ export default function RuleCreator() {
     
     if (file instanceof File) {
       formData.append('file', file);
-      console.log('Appending file:', file.name, file.type, file.size);
     }
 
     try {
-      await createRuleMutation.mutateAsync(formData);
+      const response = await createRuleMutation.mutateAsync(formData);
+      setGeneratedRule(response.content);
+      setAgentOutput(response.agent_output);
+      setRuleId(response.id);
+      setError(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to create rule');
+      setGeneratedRule(null);
+      setAgentOutput(null);
+      setRuleId(null);
     }
   };
 

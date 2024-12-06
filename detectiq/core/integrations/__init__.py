@@ -15,7 +15,7 @@ def _register_integration(name: str, import_func) -> None:
     """Helper function to register an integration with error handling."""
     try:
         import_func()
-        logger.info(f"Successfully registered {name} integration")
+        logger.debug(f"Successfully registered {name} integration")
     except Exception as e:
         logger.warning(f"Failed to register {name} integration: {str(e)}")
 

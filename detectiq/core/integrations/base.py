@@ -3,8 +3,6 @@ from typing import Any, Dict, List, Optional, Type
 
 from pydantic import BaseModel, Field, SecretStr
 
-from detectiq.core.settings import settings_manager
-
 
 class SIEMCredentials(BaseModel):
     """Base model for SIEM credentials."""
@@ -39,23 +37,22 @@ class BaseSIEMIntegration(ABC):
     credentials_class: Type[SIEMCredentials] = SIEMCredentials
     integration_name: str = ""
 
-    def __init__(self) -> None:
+    def __init__(self, credentials: Optional[SIEMCredentials] = None) -> None:
         if not self.integration_name:
             raise ValueError("Integration name is required in subclass")
-        self.credentials = self._get_credentials()
+
+        if credentials and not isinstance(credentials, self.credentials_class):
+            # Try to convert the credentials to the correct type
+            try:
+                credentials = self.credentials_class(**credentials.model_dump())
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid credentials type. Expected {self.credentials_class.__name__}, got {type(credentials).__name__}: {str(e)}"
+                )
+
+        self.credentials = credentials or self.credentials_class()
         self._validate_credentials()
         self._initialize_client()
-
-    def _get_credentials(self) -> SIEMCredentials:
-        """Get credentials from settings manager."""
-        creds = getattr(settings_manager.settings.integrations, self.integration_name, None)
-        if not creds:
-            raise ValueError(f"No credentials found for {self.integration_name}")
-
-        if not isinstance(creds, self.credentials_class):
-            creds = self.credentials_class(**creds.dict())
-
-        return creds
 
     @abstractmethod
     def _validate_credentials(self) -> None:

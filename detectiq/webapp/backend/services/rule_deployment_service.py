@@ -1,14 +1,18 @@
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
+import keyring
 import yaml
+from pydantic import SecretStr
 from sigmaiq import SigmAIQBackend
 
+from detectiq.core.config import config_manager
+from detectiq.core.integrations.base import SIEMCredentials
 from detectiq.core.integrations.elastic import ElasticIntegration
 from detectiq.core.integrations.microsoft_xdr import MicrosoftXDRIntegration
 from detectiq.core.integrations.splunk import SplunkCredentials, SplunkIntegration
 from detectiq.core.utils.logging import get_logger
-from detectiq.webapp.backend.api.models import StoredRule
+from detectiq.webapp.backend.rules.models import StoredRule
 
 logger = get_logger(__name__)
 
@@ -20,12 +24,16 @@ class RuleDeploymentService:
         self,
     ):
         self.translator = SigmAIQBackend
+        self.integration = None
 
     async def deploy_sigma_rule(
-        self, rule_id: int, integration_type: str, integration_config: Dict[str, Any]
+        self, rule_id: int, integration_type: str, integration_config: Dict[str, Any] | SIEMCredentials
     ) -> Dict[str, Any]:
         """Deploy a Sigma rule to the specified integration."""
         try:
+            # Log initial config
+            logger.debug(f"Deploying rule {rule_id} to {integration_type}")
+
             # Get the rule
             rule = await StoredRule.objects.aget(id=rule_id)
 
@@ -45,17 +53,25 @@ class RuleDeploymentService:
                 logger.error(f"Error translating rule: {str(e)}")
                 return {"success": False, "message": f"Failed to translate rule: {str(e)}"}
 
+            # Deploy to integration
+            if integration_type == "splunk":
+                config_dict = (
+                    integration_config if isinstance(integration_config, dict) else integration_config.model_dump()
+                )
+                integration_config = SplunkCredentials(**config_dict)
+
+            self.integration = self._get_integration(integration_type, integration_config)
+
             # Create rule config for target integration
             rule_config = self._create_rule_config(rule, query, integration_type)
 
-            # Deploy to integration
-            integration = self._get_integration(integration_type, integration_config)
-            async with integration:
-                result = await integration.create_rule(rule_config)
+            # Log rule config before deployment
+            async with self.integration:
+                result = await self.integration.create_rule(rule_config)
                 if integration_type == "splunk":
                     rule_name = result.get("title", "")
                     if rule_name:
-                        permissions_update = integration.update_rule_permissions(rule_name=rule_name)
+                        permissions_update = self.integration.update_rule_permissions(rule_name=rule_name)
             return {
                 "success": True,
                 "rule_id": result.get("id"),
@@ -76,14 +92,10 @@ class RuleDeploymentService:
 
         if integration_type == "splunk":
             rule_content = yaml.safe_load(rule.content)
-            name, config = self.parse_splunk_stanza_string(query)
+            name, rule_config = self.parse_splunk_stanza_string(query)
             severity = base_config.pop("severity")
-            base_config.update(
-                {
-                    "title": name,
-                }
-            )
-            base_config.update(config)
+            base_config.update({"title": name, "owner": "admin"})
+            base_config.update(rule_config)
             base_config["description"] = rule.description
             base_config.pop("counttype")
             base_config["alert.track"] = "1"
@@ -124,16 +136,25 @@ class RuleDeploymentService:
 
         return base_config
 
-    def _get_integration(self, integration_type: str, config: Dict[str, Any]):
+    def _get_integration(self, integration_type: str, config: Dict[str, Any] | SIEMCredentials):
         """Get integration instance based on type."""
-        if integration_type == "splunk":
-            return SplunkIntegration()
-        elif integration_type == "elastic":
-            return ElasticIntegration()
-        elif integration_type == "microsoft_xdr":
-            return MicrosoftXDRIntegration()
-        else:
-            raise ValueError(f"Unsupported integration type: {integration_type}")
+        try:
+            if integration_type == "splunk":
+                config_dict = config if isinstance(config, dict) else config.model_dump()
+                stored_password = keyring.get_password(config_manager.APP_NAME, f"{integration_type}_password")
+                splunk_config = SplunkCredentials(
+                    **{**config_dict, "password": SecretStr(stored_password) if stored_password else ""}
+                )
+                return SplunkIntegration(credentials=cast(SplunkCredentials, splunk_config))
+            elif integration_type == "elastic":
+                return ElasticIntegration()
+            elif integration_type == "microsoft_xdr":
+                return MicrosoftXDRIntegration()
+            else:
+                raise ValueError(f"Unsupported integration type: {integration_type}")
+        except Exception as e:
+            logger.error(f"Error initializing integration: {str(e)}")
+            raise
 
     def _map_severity_to_risk_score(self, severity: str) -> int:
         """Map severity to Elastic risk score."""

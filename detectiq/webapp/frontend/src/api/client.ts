@@ -1,13 +1,12 @@
 import axios from 'axios';
 import { Rule, RuleFilters, PaginatedResponse, RuleType } from '@/types/rules';
 import { Settings } from '@/types/settings';
-import { RuleCreationResponse } from '@/types/api';
-import { RuleCreationRequest } from '@/types/api';
+import { RuleCreationResponse, RuleCreationRequest } from '@/types/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   }
@@ -16,56 +15,166 @@ const apiClient = axios.create({
 export const settingsApi = {
   getSettings: async () => {
     try {
-      console.log('Fetching settings from:', '/api/settings/get_settings/');
-      const response = await apiClient.get<Settings>('/settings/get_settings/');
-      console.log('Settings response:', response);
-      return response.data;
+      const response = await fetch('/api/app-config/get-config/');
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+      return response.json();
     } catch (error) {
       console.error('Error fetching settings:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('Response data:', error.response?.data);
-        console.error('Response status:', error.response?.status);
-      }
       throw error;
     }
   },
   updateSettings: async (settings: Partial<Settings>): Promise<Settings> => {
-    const response = await apiClient.post<Settings>('/settings/update_settings/', settings);
-    return response.data;
+    const response = await fetch('/api/app-config/update-config/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...settings,
+        sigma_package_type: settings.sigma_package_type || 'core'
+      }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update settings');
+    }
+    return response.json();
   },
-
   testIntegration: async (integration: string): Promise<{success: boolean; message: string}> => {
-    const response = await apiClient.post<{success: boolean; message: string}>(
-      '/settings/test_integration/', 
-      { integration }
-    );
-    return response.data;
+    const response = await fetch('/api/app-config/test-integration/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ integration }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to test integration');
+    }
+    return response.json();
   },
-
+  checkVectorstores: async () => {
+    const response = await fetch('/api/app-config/check-vectorstores/');
+    if (!response.ok) {
+      throw new Error('Failed to check vectorstores');
+    }
+    return response.json();
+  },
+  createVectorstore: async (type: string) => {
+    const response = await fetch('/api/app-config/create-vectorstore/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create vectorstore');
+    }
+    return response.json();
+  },
+  checkRulePackages: async () => {
+    const response = await fetch('/api/app-config/check-rule-packages/');
+    if (!response.ok) {
+      throw new Error('Failed to check rule packages');
+    }
+    return response.json();
+  },
+  updateRulePackage: async (type: string, packageType?: string) => {
+    const response = await fetch('/api/app-config/update-rule-package/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ type, package_type: packageType }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update rule package');
+    }
+    return response.json();
+  },
+  getSigmaPackages: async () => {
+    const response = await fetch('/api/app-config/get-sigma-packages/');
+    if (!response.ok) {
+      throw new Error('Failed to fetch Sigma packages');
+    }
+    return response.json();
+  },
 };
 
 export const rulesApi = {
   getRules: async (filters?: RuleFilters): Promise<PaginatedResponse<Rule>> => {
-    const response = await apiClient.get<PaginatedResponse<Rule>>('/rules/', { 
-      params: filters 
-    });
-    return response.data;
+    const queryParams = new URLSearchParams(filters as Record<string, string>);
+    const response = await fetch(`/api/rules/?${queryParams}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rules');
+    }
+    return response.json();
   },
 
   getRulesByType: async (type: RuleType): Promise<PaginatedResponse<Rule>> => {
-    const response = await apiClient.get<PaginatedResponse<Rule>>(`/rules/${type}/`);
-    return response.data;
+    const response = await fetch(`/api/rules/${type}/`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rules by type');
+    }
+    return response.json();
   },
 
   searchRules: async (type: RuleType, query: string): Promise<PaginatedResponse<Rule>> => {
-    const response = await apiClient.get<PaginatedResponse<Rule>>(`/rules/${type}/search/`, {
-      params: { q: query }
-    });
-    return response.data;
+    const response = await fetch(`/api/rules/${type}/search/?q=${encodeURIComponent(query)}`);
+    if (!response.ok) {
+      throw new Error('Failed to search rules');
+    }
+    return response.json();
   },
 
+  updateRule: async (ruleId: string, updates: Partial<Rule>): Promise<Rule> => {
+    const response = await fetch(`/api/rules/${ruleId}/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update rule');
+    }
+    return response.json();
+  },
+
+  deleteRule: async (ruleId: string): Promise<void> => {
+    const response = await fetch(`/api/rules/${ruleId}/`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete rule');
+    }
+  },
+
+  deployRule: async (ruleId: string, integration: string): Promise<{success: boolean; message: string}> => {
+    const response = await fetch(`/api/rules/${ruleId}/deploy/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ integration })
+    });
+    if (!response.ok) {
+      throw new Error('Failed to deploy rule');
+    }
+    return response.json();
+  },
+
+  getRule: async (id: string): Promise<Rule> => {
+    const response = await fetch(`/api/rules/${id}/`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch rule');
+    }
+    return response.json();
+  },
+}; 
+
+
+export const ruleCreatorApi = {
   createRule: async (formData: FormData): Promise<RuleCreationResponse> => {
-    const response = await fetch('/api/rules/create_with_llm/', {
+    const response = await fetch('/api/rule-creator/create-with-llm/', {
       method: 'POST',
       body: formData,
     });
@@ -76,26 +185,4 @@ export const rulesApi = {
     
     return response.json();
   },
-
-  updateRule: async (ruleId: string, updates: Partial<Rule>): Promise<Rule> => {
-    const response = await apiClient.patch<Rule>(`/rules/${ruleId}/`, updates);
-    return response.data;
-  },
-
-  deleteRule: async (ruleId: string): Promise<void> => {
-    await apiClient.delete(`/rules/${ruleId}/`);
-  },
-
-  deployRule: async (ruleId: string, integration: string): Promise<{success: boolean; message: string}> => {
-    const response = await apiClient.post<{success: boolean; message: string}>(
-      `/rules/${ruleId}/deploy/`,
-      { integration }
-    );
-    return response.data;
-  },
-
-  getRule: async (id: string): Promise<Rule> => {
-    const response = await apiClient.get<Rule>(`/rules/${id}/`);
-    return response.data;
-  },
-}; 
+};

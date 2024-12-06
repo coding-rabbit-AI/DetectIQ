@@ -1,15 +1,11 @@
-import json
-import logging
+import re
 import shutil
-from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-import yaml
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from langchain_openai import OpenAIEmbeddings
 
+from detectiq.core.config import config
 from detectiq.core.llm.sigma_rules import SigmaLLM
 from detectiq.core.llm.snort_rules import SnortLLM
 from detectiq.core.llm.yara_rules import YaraLLM
@@ -17,7 +13,9 @@ from detectiq.core.utils.logging import get_logger
 from detectiq.core.utils.sigma.rule_updater import SigmaRuleUpdater
 from detectiq.core.utils.snort.rule_updater import SnortRuleUpdater
 from detectiq.core.utils.yara.rule_updater import YaraRuleUpdater
+from detectiq.webapp.backend.rules.models import StoredRule
 from detectiq.webapp.backend.services.rule_service import DjangoRuleRepository
+from detectiq.webapp.backend.utils.mitre_utils import extract_mitre_info
 
 logger = get_logger(__name__)
 
@@ -28,12 +26,14 @@ class RulesetManager:
     def __init__(self):
         """Initialize the ruleset manager."""
         logger.info("Initializing RulesetManager")
-        self.rule_dirs = settings.RULE_DIRS
-        self.vector_store_dirs = settings.VECTOR_STORE_DIRS
+        self.rule_dirs = config.rule_directories
+        self.vector_store_dirs = config.vector_store_directories
         self.rule_repository = DjangoRuleRepository()
 
-        # Ensure directories exist
+        # Ensure directories exist and are Path objects
         for directory in [*self.rule_dirs.values(), *self.vector_store_dirs.values()]:
+            if isinstance(directory, str):
+                directory = Path(directory)
             directory.mkdir(parents=True, exist_ok=True)
 
         # Initialize rule updaters
@@ -60,6 +60,9 @@ class RulesetManager:
             vector_store_dir=str(self.vector_store_dirs["snort"]),
             embedding_model=OpenAIEmbeddings(model="text-embedding-3-small"),
         )
+
+        # Define source mapping as a class constant
+        self.SOURCE_MAPPING = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
 
     def _validate_severity(self, severity: str) -> str:
         """Validate and normalize severity value."""
@@ -104,11 +107,17 @@ class RulesetManager:
         try:
             logger.info(f"Storing {len(rules)} {rule_type} rules in database")
 
-            # Define source mapping
-            source_mapping = {"sigma": "SigmaHQ", "yara": "YARA-Forge", "snort": "Snort3 Community"}
+            # Get the appropriate source for this rule type
+            source = self.SOURCE_MAPPING.get(rule_type)
+            if not source:
+                raise ValueError(f"Unknown rule type: {rule_type}")
+
+            # First, delete existing rules of this type and source
+            logger.info(f"Deleting existing {rule_type} rules from {source}")
+            await self.rule_repository.delete_rules_by_type_and_source(rule_type, source)
+            logger.info(f"Successfully deleted existing {rule_type} rules from {source}")
 
             formatted_rules = []
-
             for i, rule in enumerate(rules):
                 try:
                     # Debug log the raw rule
@@ -128,16 +137,13 @@ class RulesetManager:
                     validated_severity = self._validate_severity(raw_severity)
 
                     # Extract title based on rule type
-                    if rule_type == "yara":
-                        title = (
-                            rule["metadata"].get("rule_name")
-                            or rule["metadata"].get("title")
-                            or rule.get("title", f"Untitled_{rule_type}_Rule_{i}")
-                        ).replace("_", " ")
-                    else:
-                        title = rule["metadata"].get("title", f"Untitled_{rule_type}_Rule_{i}").replace("_", " ")
+                    title = self._extract_rule_title(rule_type, rule, i)
+
                     if title.lower().startswith("untitled"):
                         logger.warning(f"Untitled rule detected: {title}")
+
+                    # Extract MITRE information
+                    mitre_tactics, mitre_techniques = extract_mitre_info(rule_type, rule)
 
                     # Format rule data for database
                     formatted_rule = {
@@ -148,7 +154,10 @@ class RulesetManager:
                         "enabled": True,
                         "description": rule["metadata"].get("description", ""),
                         "metadata": rule.get("metadata", {}),
-                        "source": source_mapping.get(rule_type, "DetectIQ"),
+                        "source": str(rule.get("metadata", {}).get("source")),
+                        "package_type": str(rule.get("metadata", {}).get("package_type")),
+                        "mitre_tactics": mitre_tactics,
+                        "mitre_techniques": mitre_techniques,
                     }
 
                     # Debug log the formatted rule
@@ -165,12 +174,29 @@ class RulesetManager:
 
             # Store rules in database
             logger.info(f"Attempting to save {len(formatted_rules)} formatted rules")
-            await self.rule_repository.save_rules(formatted_rules, f"{rule_type}_core")
+            await self.rule_repository.bulk_save_rules(formatted_rules)
             logger.info(f"Successfully stored {len(formatted_rules)} {rule_type} rules in database")
 
         except Exception as e:
             logger.error(f"Error storing {rule_type} rules in database: {str(e)}")
             raise
+
+    def _extract_rule_title(self, rule_type: str, rule: Dict[str, Any], index: int) -> str:
+        """Extract title from rule based on rule type."""
+        if rule_type == "snort":
+            # For Snort rules, use the msg field as the title
+            msg_match = re.search(r'msg:"([^"]+)";', rule["content"])
+            return msg_match.group(1) if msg_match else f"Untitled_Snort_Rule_{index}"
+        elif rule_type == "yara":
+            # For YARA rules, try multiple fields
+            return (
+                rule["metadata"].get("rule_name")
+                or rule["metadata"].get("title")
+                or rule.get("title", f"Untitled_YARA_Rule_{index}")
+            ).replace("_", " ")
+        else:  # sigma
+            # For Sigma rules, use the title field
+            return rule["metadata"].get("title", f"Untitled_Sigma_Rule_{index}").replace("_", " ")
 
     async def _clear_database_rules(self, rule_type: Optional[str] = None) -> None:
         """Clear rules from database.

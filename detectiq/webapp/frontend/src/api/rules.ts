@@ -3,7 +3,7 @@ import { Rule } from '@/types/rules';
 
 export const rulesApi = {
   async analyzeFile(formData: FormData): Promise<FileAnalysisResponse> {
-    const response = await fetch('/api/rules/analyze-file/', {
+    const response = await fetch('/rules/analyze-file/', {
       method: 'POST',
       body: formData,
     });
@@ -17,7 +17,7 @@ export const rulesApi = {
   },
 
   async createRule(data: RuleCreationRequest): Promise<RuleCreationResponse> {
-    const response = await fetch('/api/rules/create-rule/', {
+    const response = await fetch('/rules/create-rule/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ export const rulesApi = {
   },
 
   async getRule(id: string): Promise<Rule> {
-    const response = await fetch(`/api/rules/${id}/`);
+    const response = await fetch(`/rules/${id}/`);
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to fetch rule');

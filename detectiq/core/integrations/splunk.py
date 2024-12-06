@@ -7,7 +7,9 @@ import splunklib.results as splunk_results
 from pydantic import Field, SecretStr
 
 from detectiq.core.integrations.base import BaseSIEMIntegration, SIEMCredentials
-from detectiq.core.settings import settings_manager
+from detectiq.core.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class SplunkCredentials(SIEMCredentials):
@@ -18,10 +20,34 @@ class SplunkCredentials(SIEMCredentials):
     # Override parent fields with required fields
     username: str = Field(default="", description="Splunk username")
     password: SecretStr = Field(default=SecretStr(""), description="Splunk password")
-
+    host: str = Field(default="", description="Splunk host")
+    port: int = Field(default=8089, description="Splunk port")
     # Add Splunk-specific fields
     app: Optional[str] = Field(default=None, description="Splunk app context")
     owner: Optional[str] = Field(default=None, description="Splunk owner context")
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Clean and normalize the host/hostname
+        if self.hostname and not self.host:
+            self.host = self._clean_host(self.hostname)
+        elif self.host and not self.hostname:
+            self.hostname = self._clean_host(self.host)
+
+    def _clean_host(self, host: str) -> str:
+        """Clean and normalize host string."""
+        # Remove any protocol prefixes
+        if "://" in host:
+            host = host.split("://")[1]
+
+        # Remove any trailing slashes or paths
+        host = host.split("/")[0]
+
+        # Remove any port numbers if present
+        host = host.split(":")[0]
+
+        # Strip any whitespace
+        return host.strip()
 
 
 class SplunkIntegration(BaseSIEMIntegration):
@@ -30,60 +56,46 @@ class SplunkIntegration(BaseSIEMIntegration):
     credentials_class = SplunkCredentials
     integration_name = "splunk"
     service: Any  # Type hint for splunk service
-    app: str
-    owner: str
 
-    def __init__(self):
+    def __init__(self, credentials: Optional[SplunkCredentials] = None):
         """Initialize Splunk integration."""
-        super().__init__()  # Add this to properly initialize the base class
-        self.credentials = settings_manager.settings.integrations.splunk
-        self._validate_credentials()
-        self._initialize_client()
-
-    def _validate_credentials(self) -> None:
-        """Validate Splunk credentials."""
-        credentials = cast(SplunkCredentials, self.credentials)
-        if not credentials.username or not credentials.password:
-            raise ValueError("Splunk integration requires username and password")
-        if not credentials.hostname:
-            raise ValueError("Splunk integration requires hostname")
+        super().__init__(credentials)
+        self.credentials = cast(SplunkCredentials, self.credentials)
+        self.credentials.owner = self.credentials.owner or self.credentials.username
 
     def _initialize_client(self) -> None:
         """Initialize the Splunk client."""
-        credentials = cast(SplunkCredentials, self.credentials)
+        if not self.credentials:
+            raise ValueError("Credentials are required for Splunk integration")
 
-        # Clean up hostname
-        hostname = credentials.hostname.strip()
-        hostname = hostname.lstrip("@")
+        # Use the cleaned host value
+        host = self.credentials.host
 
-        # Remove protocol if present
-        if "://" in hostname:
-            hostname = hostname.split("://")[-1]
-
-        # Remove any trailing slashes
-        hostname = hostname.rstrip("/")
+        if not host:
+            raise ValueError("Host is required for Splunk integration")
 
         try:
             self.service = splunk_client.connect(
-                host=hostname,
-                port=8089,  # Default Splunk management port
-                username=credentials.username,
-                password=(
-                    credentials.password.get_secret_value()
-                    if isinstance(credentials.password, SecretStr)
-                    else credentials.password
-                ),
-                scheme="https" if credentials.verify_ssl else "http",
+                host=host,
+                port=self.credentials.port,
+                username=self.credentials.username,
+                password=self.credentials.password.get_secret_value() if self.credentials.password else "",
+                app=self.credentials.app,
+                owner=self.credentials.owner or self.credentials.username,
             )
-            self.app = credentials.app or "search"
-
-            # Set namespace correctly for the service
-            self.owner = credentials.owner or credentials.username
-            self.service.namespace.app = self.app
-            self.service.namespace.owner = self.owner
-            self.service.namespace.sharing = "global"
         except Exception as e:
             raise ValueError(f"Failed to connect to Splunk: {str(e)}")
+
+    def _validate_credentials(self) -> None:
+        """Validate the provided credentials."""
+        if not self.credentials:
+            raise ValueError("Credentials are required for Splunk integration")
+
+        credentials = cast(SplunkCredentials, self.credentials)
+        if not credentials.username or not credentials.password:
+            raise ValueError("Username and password are required for Splunk integration")
+        if not (credentials.host or credentials.hostname):
+            raise ValueError("Host/hostname is required for Splunk integration")
 
     async def execute_search(self, query: str, **kwargs) -> Dict[str, Any]:
         """Execute a Splunk search query."""
@@ -113,21 +125,28 @@ class SplunkIntegration(BaseSIEMIntegration):
 
     async def create_rule(self, rule: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new correlation search."""
-        name = rule.pop("title").strip()
-        search = rule.pop("search").strip()
-        saved_search = await asyncio.to_thread(self.service.saved_searches.create, name=name, search=search, **rule)
+        try:
+            name = rule.pop("title").strip()
+            search = rule.pop("search").strip()
 
-        return {
-            "id": saved_search.name,
-            "title": saved_search.name,
-            "search": saved_search.content.get("search"),
-        }
+            saved_search = await asyncio.to_thread(self.service.saved_searches.create, name=name, search=search, **rule)
+            logger.debug(f"Created saved search: {saved_search.name}")
+
+            return {
+                "id": saved_search.name,
+                "title": saved_search.name,
+                "search": saved_search.content.get("search"),
+            }
+        except Exception as e:
+            logger.error(f"Error creating rule: {str(e)}")
+            raise
 
     def update_rule_permissions(
         self, rule_name: str, sharing: str = "global", owner: str = "", perms_read: str = "*"
     ) -> None:
         """Update the permissions for a correlation search."""
-        owner = self.owner
+        credentials = cast(SplunkCredentials, self.credentials)
+        owner = owner or credentials.owner or ""
 
         rule_obj = self.service.saved_searches[rule_name]
         results = rule_obj.acl_update(sharing=sharing, owner=owner, **{"perms.read": perms_read})

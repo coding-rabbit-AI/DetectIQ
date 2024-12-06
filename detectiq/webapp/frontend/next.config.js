@@ -1,25 +1,58 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   trailingSlash: true,
+  experimental: {
+    proxyTimeout: 600000, // 10 minutes
+  },
   async rewrites() {
     return [
-      // Handle license requests first (Next.js API routes)
+      // API endpoints only - not the page itself
       {
-        source: '/api/licenses/:type',
-        destination: '/api/licenses/:type',
-      },
-      // Forward all other API requests to Django with consistent trailing slashes
-      {
-        source: '/api/:path*/',
-        destination: 'http://127.0.0.1:8000/api/:path*/',
+        source: '/api/rules/:path*/',
+        destination: 'http://127.0.0.1:8000/rules/:path*/',
         basePath: false
       },
-      // Catch-all for API requests without trailing slashes
+      // Deploy endpoint
       {
-        source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*/',
+        source: '/api/rules/:id/deploy/',
+        destination: 'http://127.0.0.1:8000/rules/:id/deploy/',
         basePath: false
-      }
+      },
+      {
+        source: '/api/app-config/:path*/',
+        destination: 'http://127.0.0.1:8000/app-config/:path*/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/get-config/',
+        destination: 'http://127.0.0.1:8000/app-config/get-config/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/update-config/',
+        destination: 'http://127.0.0.1:8000/app-config/update-config/',
+        basePath: false
+      },
+      {
+        source: '/api/app-config/test-integration/',
+        destination: 'http://127.0.0.1:8000/app-config/test-integration/',
+        basePath: false
+      },
+      {
+        source: '/api/rule-creator/:path*/',
+        destination: 'http://127.0.0.1:8000/rule-creator/:path*/',
+        basePath: false
+      },
+      // Other routes...
+      {
+        source: '/api/licenses/:type/',
+        destination: '/api/licenses/:type/',
+      },
+      //{
+      //  source: '/api/:path*/',
+      //  destination: 'http://127.0.0.1:8000/api/:path*/',
+      //  basePath: false
+      //},
     ];
   },
   // Increase timeouts

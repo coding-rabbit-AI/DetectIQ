@@ -1,37 +1,50 @@
 import asyncio
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-import yaml
-from django.conf import settings
+from langchain.embeddings.base import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
+from detectiq.core.config import config
 from detectiq.core.llm.sigma_rules import SigmaLLM
-from detectiq.core.llm.tools.sigma.create_sigma_rule import CreateSigmaRuleTool
 from detectiq.core.utils.logging import get_logger
 from detectiq.core.utils.sigma.rule_updater import SigmaRuleUpdater
+from detectiq.webapp.backend.rules.models import StoredRule
 from detectiq.webapp.backend.services.rule_service import DjangoRuleRepository
 
 logger = get_logger(__name__)
 
 
 class SigmaRulesetManager:
-    def __init__(self):
+    def __init__(
+        self,
+        rule_dir: Optional[str] = None,
+        vector_store_dir: Optional[str] = None,
+        package_type: Optional[str] = None,
+        embedding_model: Optional[Embeddings] = None,
+    ):
         """Initialize the Sigma ruleset manager."""
-        self.rule_dir = settings.RULE_DIRS["sigma"]
-        self.vector_store_dir = settings.VECTOR_STORE_DIRS["sigma"]
+        self.rule_dir = Path(str(rule_dir or config.rule_directories.get("sigma")))
+        self.vector_store_dir = Path(str(vector_store_dir or config.vector_store_directories.get("sigma")))
         self.rule_repository = DjangoRuleRepository()
-
+        self.package_type = package_type or config.sigma_package_type or "core"
+        self.embedding_model = (
+            embedding_model if embedding_model is not None else OpenAIEmbeddings(model=config.embedding_model)
+        )
         # Initialize rule updater
-        self.updater = SigmaRuleUpdater(rule_dir=str(self.rule_dir))
+        self.updater = SigmaRuleUpdater(rule_dir=str(self.rule_dir), package_type=self.package_type)
 
         # Initialize LLM handler
-        self.llm = SigmaLLM(
-            rule_dir=str(self.rule_dir),
-            auto_update=False,
-            vector_store_dir=str(self.vector_store_dir),
-            embedding_model=OpenAIEmbeddings(model="text-embedding-3-small"),
-        )
+        try:
+            self.llm = SigmaLLM(
+                rule_dir=str(self.rule_dir),
+                auto_update=False,
+                vector_store_dir=str(self.vector_store_dir),
+                embedding_model=self.embedding_model,
+            )
+        except Exception as e:
+            logger.error(f"Error initializing SigmaLLM: {e}")
 
     async def update_rules(self, force: bool = False) -> List[Dict[str, Any]]:
         """Update Sigma rules and return loaded rules."""

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from detectiq.webapp.backend.api.models import RuleVersion, StoredRule
+from detectiq.webapp.backend.rules.models import RuleVersion, StoredRule
 
 
 class RuleVersionSerializer(serializers.ModelSerializer):

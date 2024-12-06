@@ -23,8 +23,8 @@ class ElasticIntegration(BaseSIEMIntegration):
     integration_name = "elasticsearch"
     client: AsyncElasticsearch
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, credentials: Optional[ElasticCredentials] = None) -> None:
+        super().__init__(credentials)
 
     def _validate_credentials(self) -> None:
         """Validate Elasticsearch credentials."""

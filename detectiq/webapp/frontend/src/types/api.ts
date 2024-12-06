@@ -8,10 +8,12 @@ export interface RuleCreationRequest {
 
 export interface RuleCreationResponse {
   id: string;
-  content: string;
   title: string;
-  severity: RuleSeverity;
-  agent_output?: string;
+  content: string;
+  type: string;
+  severity: string;
+  description: string;
+  agent_output: string;
 }
 
 export interface FileAnalysisResponse {

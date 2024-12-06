@@ -11,14 +11,21 @@ export interface IntegrationCredentials {
   owner?: string;
   verify_ssl: boolean;
   enabled: boolean;
+  [key: string]: string | boolean | undefined;
 }
 
 export interface Settings {
   openai_api_key: string;
+  llm_model: string;
+  embedding_model: string;
+  temperature: number;
   rule_directories: {
-    sigma: string;
-    yara: string;
-    snort: string;
+    [key: string]: string;
+  };
+  sigma_package_type: string;
+  yara_package_type: string;
+  vector_store_directories: {
+    [key: string]: string;
   };
   integrations: {
     splunk: IntegrationCredentials;
