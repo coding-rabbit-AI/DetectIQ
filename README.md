@@ -10,7 +10,7 @@
 > - Not recommended for production use at this time
 > - Security features are still being implemented
 > 
-> We welcome feedback and contributions, but please use at your own risk!
+> We welcome all feedback and contributions, but please use at your own risk!
 
 DetectIQ is an AI-powered security rule management platform that helps create, analyze, and optimize detection rules across multiple security platforms.  It can be used with the provided UI, or just with Python scripts using the self contained `detectiq/core` module.  See examples in the `detectiq/examples` directory for more information.
 
@@ -20,11 +20,11 @@ DetectIQ is an AI-powered security rule management platform that helps create, a
 
 - [DetectIQ](#detectiq)
   - [Current Features](#current-features)
-    - [AI-Powered Detection 🤖](#ai-powered-detection-)
-    - [Rule Repository Integration 📚](#rule-repository-integration-)
-    - [Static Analysis Integration 📊](#static-analysis-integration-)
-    - [Multi-Platform Integration 🔄](#multi-platform-integration-)
-    - [Planned Features](#planned-features)
+    - [AI-Powered Detection](#ai-powered-detection)
+    - [Rule Repository Integration](#rule-repository-integration)
+    - [Static Analysis Integration](#static-analysis-integration)
+    - [Multi-Platform Integration](#multi-platform-integration)
+  - [Planned Features](#planned-features)
   - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Installation](#installation)
@@ -46,32 +46,31 @@ DetectIQ is an AI-powered security rule management platform that helps create, a
 
 ## Current Features
 
-### AI-Powered Detection 🤖
+### AI-Powered Detection 
 - Create and optimize detection rules using OpenAI's LLM models
 - Intelligent rule suggestions based on context and best practices
 - Automated rule validation and testing 
-- Provide context for rule creation from static file analysis for YARA rules
-- Provide context for rule creation from PCAP analysis for Snort rules
+- Upload malware samples and PCAP files for static analysis, automatically adding context for YARA and Snort rule creation
 - LLM Rule creation analysis and detection logic returned in the rule creation response
 
-### Rule Repository Integration 📚
+### Rule Repository Integration 
 - Enhanced by community-tested repositories:
   - SigmaHQ Core Ruleset
   - YARA-Forge Rules
   - Snort3 Community Ruleset
-- Automatically keep repositories up-to-date with rule changes
+- Automatically check and update repositories with rule changes
 - Vectorize rules for efficient similarity comparison for more context-aware rule creation engine
 
-### Static Analysis Integration 📊
+### Static Analysis Integration 
 - Automated file analysis for YARA rules
 - PCAP analysis for Snort rule creation
 - Implicit log analysis for Sigma rule optimization (Explicit Analysis Coming Soon)
 
-### Multi-Platform Integration 🔄
+### Multi-Platform Integration 
 - Automatic Sigma rule translation to various SIEM queries using `pySigma` and `SigmAIQ` wrapper
 - Seamlessly create Splunk Enterprise Security correlation rules from Sigma rules
 
-### Planned Features
+## Planned Features
 - Custom/local LLM models, embeddings, and vector stores
 - More integrations with SIEMs such as Elastic and Microsoft XDR
 - Explicit log analysis for Sigma rule optimization
@@ -83,6 +82,8 @@ DetectIQ is an AI-powered security rule management platform that helps create, a
 - Project refactoring for production readiness
 - Chatbot (langchain agents) UI with memory
 - Docker containerization and deployment
+- Rule management without OpenAI requirements
+- More non-webapp examples
 
 ## Getting Started
 
@@ -183,6 +184,8 @@ YARA_PACKAGE_TYPE="core"                        # YARA ruleset type (default: co
 ### Start Development Servers
 
 > **Note**: You must have both the frontend and backend servers running to use the webapp.
+> 
+> Navigate to http://localhost:3000/ to access the webapp UI after starting the servers.
 
 #### With VSCode
 
@@ -199,6 +202,8 @@ npm run dev
 cd detectiq/
 python manage.py runserver
 ```
+
+
 
 ## Project Structure
 
