@@ -45,8 +45,8 @@ const nextConfig = {
       },
       // Other routes...
       {
-        source: '/api/licenses/:type',
-        destination: '/api/licenses/:type',
+        source: '/api/licenses/:type/',
+        destination: '/api/licenses/:type/',
       },
       //{
       //  source: '/api/:path*/',

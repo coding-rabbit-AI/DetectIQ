@@ -95,12 +95,15 @@ export default function AboutPage() {
   useEffect(() => {
     const fetchLicenses = async () => {
       try {
+        console.log('Fetching licenses...');
         const [sigma, yara, snort] = await Promise.all([
           getLicenseContent('sigma'),
           getLicenseContent('yara'),
           getLicenseContent('snort')
         ]);
+        console.log('Licenses fetched:', { sigma, yara, snort });
         setLicenses({ sigma, yara, snort });
+        console.log('Licenses state after setting:', { sigma, yara, snort });
       } catch (error) {
         console.error('Error fetching licenses:', error);
       } finally {
@@ -110,6 +113,9 @@ export default function AboutPage() {
 
     fetchLicenses();
   }, []);
+
+  console.log('Current licenses state:', licenses);
+  console.log('Current tab value:', tabValue);
 
   if (loading) {
     return (
@@ -522,6 +528,8 @@ function TabPanel(props: {
 }) {
   const { children, value, index, ...other } = props;
 
+  console.log(`TabPanel ${index} rendering, current value: ${value}, visible: ${value === index}`);
+
   return (
     <Fade in={value === index}>
       <div
@@ -531,7 +539,12 @@ function TabPanel(props: {
         aria-labelledby={`license-tab-${index}`}
         {...other}
       >
-        {value === index && children}
+        {value === index && (
+          <>
+            {console.log(`TabPanel ${index} content:`, children)}
+            {children}
+          </>
+        )}
       </div>
     </Fade>
   );

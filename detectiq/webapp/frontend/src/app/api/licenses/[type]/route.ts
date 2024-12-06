@@ -10,13 +10,25 @@ export async function GET(
     const type = params.type;
     let content = "";
 
-    // Get the project root directory by going up to DetectIQ/detectiq
-    const projectRoot = path.join(process.cwd(), '..', '..', '..', 'detectiq');
-    console.log('Project Root:', projectRoot); // Debug log
+    // Get the project root directory
+    const projectRoot = path.join(process.cwd(), '..', '..', '..');
+    console.log('Project Root:', projectRoot);
+    console.log('Current working directory:', process.cwd());
     
+    const filePath = path.join(projectRoot, "detectiq", "licenses", type);
+    console.log('Looking for licenses in:', filePath);
+    
+    // List directory contents
+    try {
+      const files = await fs.readdir(filePath);
+      console.log('Found files:', files);
+    } catch (e) {
+      console.error('Error reading directory:', e);
+    }
+
     switch (type) {
       case "sigma": {
-        const filePath = path.join(projectRoot, "licenses", "sigma", "drl.txt");
+        const filePath = path.join(projectRoot,"licenses", "sigma", "drl.md");
         console.log('Sigma License Path:', filePath); // Debug log
         content = await fs.readFile(filePath, "utf-8");
         break;
@@ -66,8 +78,13 @@ export async function GET(
     console.error("Error reading license file:", error);
     // Return more specific error message with path information
     return new NextResponse(
-      `License content unavailable: ${error.message}\nProject Root: ${process.cwd()}`, 
-      { status: 500 }
+      JSON.stringify({ error: `License content unavailable: ${(error as Error).message}\nProject Root: ${process.cwd()}` }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
     );
   }
 } 
