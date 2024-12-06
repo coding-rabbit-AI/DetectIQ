@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_extensions",
     "detectiq.webapp.backend",
-    "detectiq.webapp.backend.api",
     "detectiq.webapp.backend.rules.apps.RulesConfig",
     "detectiq.webapp.backend.app_config.apps.AppConfigConfig",
     "detectiq.webapp.backend.rule_creator.apps.RuleCreatorConfig",
