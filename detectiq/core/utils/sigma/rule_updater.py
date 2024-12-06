@@ -133,9 +133,12 @@ class SigmaRuleUpdater:
 
             # Update installed version
             self.installed_version = latest_version
-            with open(self.version_file, "w") as f:
-                f.write(latest_version)
-            logger.info(f"Updated to version {latest_version}")
+            if latest_version:
+                with open(self.version_file, "w") as f:
+                    f.write(latest_version)
+                logger.info(f"Updated to version {latest_version}")
+            else:
+                logger.warning("No version information available")
 
         except Exception as e:
             raise RuntimeError(f"Failed to update rules: {str(e)}")
@@ -169,6 +172,7 @@ class SigmaRuleUpdater:
                             "rule_type": "sigma",
                             "package_type": self.package_type,
                             "version": self.installed_version,
+                            "source": "SigmaHQ",
                         }
 
                         if "tags" in rule_data:

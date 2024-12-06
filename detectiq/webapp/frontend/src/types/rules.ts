@@ -16,6 +16,9 @@ export interface Rule {
   is_enabled: boolean;
   tags?: string[];
   source?: string;
+  package_type?: string;
+  mitre_tactics?: string[];
+  mitre_techniques?: string[];
 }
 
 export interface PaginatedResponse<T> {

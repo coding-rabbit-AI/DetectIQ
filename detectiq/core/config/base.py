@@ -60,6 +60,7 @@ class DetectIQConfig(BaseModel):
             "sigma": os.getenv("SIGMA_RULE_DIR", str(DEFAULT_DIRS.SIGMA_RULE_DIR)),
             "yara": os.getenv("YARA_RULE_DIR", str(DEFAULT_DIRS.YARA_RULE_DIR)),
             "snort": os.getenv("SNORT_RULE_DIR", str(DEFAULT_DIRS.SNORT_RULE_DIR)),
+            "generated": os.getenv("GENERATED_RULE_DIR", str(DEFAULT_DIRS.GENERATED_RULE_DIR)),
         }
     )
     sigma_package_type: str = Field(default="core")
@@ -114,6 +115,7 @@ class ConfigManager:
                 "sigma": os.getenv("SIGMA_RULE_DIR", str(DEFAULT_DIRS.SIGMA_RULE_DIR)),
                 "yara": os.getenv("YARA_RULE_DIR", str(DEFAULT_DIRS.YARA_RULE_DIR)),
                 "snort": os.getenv("SNORT_RULE_DIR", str(DEFAULT_DIRS.SNORT_RULE_DIR)),
+                "generated": os.getenv("GENERATED_RULE_DIR", str(DEFAULT_DIRS.GENERATED_RULE_DIR)),
             },
             "vector_store_directories": {
                 "sigma": os.getenv("SIGMA_VECTOR_STORE_DIR", str(DEFAULT_DIRS.SIGMA_VECTOR_STORE_DIR)),

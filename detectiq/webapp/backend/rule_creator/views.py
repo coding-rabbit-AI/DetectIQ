@@ -63,44 +63,109 @@ class RuleCreatorViewSet(viewsets.ViewSet):
             logger.error(f"Error initializing {rule_type} vector store: {e}")
             return None
 
+    async def _store_rule_file(self, rule_type: str, title: str, content: str) -> str:
+        """Store rule file in the appropriate directory with correct extension."""
+        try:
+            extensions = {"sigma": ".yml", "yara": ".yara", "snort": ".rules"}
+
+            # Create safe filename from title
+            safe_title = "".join(c for c in title if c.isalnum() or c in (" ", "-", "_")).strip()
+            safe_title = safe_title.replace(" ", "_").lower()
+
+            # Get the correct extension
+            extension = extensions.get(rule_type, ".txt")
+
+            # Get base generated directory and create rule type subdirectory
+            base_dir = Path(self.detectiq_config.rule_directories["generated"]) / rule_type
+            logger.debug(f"Creating rule in directory: {base_dir}")
+
+            # Create the directory if it doesn't exist
+            base_dir.mkdir(parents=True, exist_ok=True)
+
+            # Ensure unique filename
+            file_path = base_dir / f"{safe_title}{extension}"
+            counter = 1
+            while file_path.exists():
+                file_path = base_dir / f"{safe_title}_{counter}{extension}"
+                counter += 1
+
+            # Write the content
+            file_path.write_text(content)
+            logger.info(f"Stored generated rule at: {file_path}")
+
+            return str(file_path)
+
+        except Exception as e:
+            logger.error(f"Error in _store_rule_file: {str(e)}", exc_info=True)
+            raise
+
     @async_action(detail=False, methods=["post"])
     async def create_with_llm(self, request: Request) -> Response:
         """Create rule using LLM with optional file analysis."""
         try:
+            # Log incoming request data
+            logger.debug(f"Received rule creation request with data: {request.data}")
+
             # Validate input data using serializer
             serializer = RuleCreatorSerializer(data=request.data)
             if not serializer.is_valid():
+                logger.error(f"Serializer validation failed: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            validated_data = serializer.validated_data  # type: ignore
+            validated_data = serializer.validated_data
             description = validated_data.get("description", "")  # type: ignore
             rule_type = validated_data.get("type", "sigma")  # type: ignore
+
+            logger.debug(f"Processing rule creation - Type: {rule_type}, Description: {description}")
 
             # Handle file upload
             file_analysis = await self._handle_file_upload(validated_data, rule_type)
             if isinstance(file_analysis, Response):
+                logger.error(f"File upload handling failed: {file_analysis.data}")
                 return file_analysis
 
             # Generate rule using appropriate tool
+            logger.debug("Generating rule with LLM")
             result = await self._generate_rule(rule_type, description, file_analysis)
             if isinstance(result, Response):
+                logger.error(f"Rule generation failed: {result.data}")
                 return result
 
-            # Create rule in database
-            rule = await self.rule_repository.create_rule(
-                {
-                    "title": result.get("title", "Untitled Rule"),
-                    "content": result.get("rule", "") or result.get("content", ""),
+            title = result.get("title", "Untitled Rule")
+            content = result.get("rule", "") or result.get("content", "")
+
+            logger.debug(f"Generated rule - Title: {title}")
+
+            try:
+                # Store rule file
+                file_path = await self._store_rule_file(rule_type, title, content)
+                logger.debug(f"Stored rule file at: {file_path}")
+            except Exception as e:
+                logger.error(f"Error storing rule file: {str(e)}")
+                file_path = None  # Continue even if file storage fails
+
+            try:
+                # Create rule in database
+                rule_data = {
+                    "title": title,
+                    "content": content,
                     "type": rule_type,
                     "severity": result.get("severity", "medium"),
                     "description": result.get("description", "No description available"),
                     "enabled": True,
-                    "integration": "llm",
+                    "package_type": "llm",
+                    "source": "DetectIQ",
                 }
-            )
 
-            return Response(
-                {
+                # Only add file_path to metadata if it exists
+                if file_path:
+                    rule_data["metadata"] = {**result.get("metadata", {}), "file_path": file_path}
+
+                logger.debug(f"Creating rule in database with data: {rule_data}")
+                rule = await self.rule_repository.create_rule(rule_data)
+                logger.debug(f"Rule created successfully with ID: {rule.pk}")
+
+                response_data = {
                     "id": str(rule.pk),
                     "title": rule.title,
                     "content": rule.content,
@@ -108,12 +173,19 @@ class RuleCreatorViewSet(viewsets.ViewSet):
                     "severity": rule.severity,
                     "description": rule.description,
                     "agent_output": result.get("agent_output", "") or result.get("output", ""),
-                },
-                status=status.HTTP_201_CREATED,
-            )
+                }
+
+                if file_path:
+                    response_data["file_path"] = file_path
+
+                return Response(response_data, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                logger.error(f"Error creating rule in database: {str(e)}")
+                raise
 
         except Exception as e:
-            logger.error(f"Error creating rule with LLM: {e}")
+            logger.error(f"Error creating rule with LLM: {str(e)}", exc_info=True)
             return Response({"error": f"Failed to create rule: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     async def _handle_file_upload(self, validated_data: Any, rule_type: str) -> Response | Dict[str, Any]:

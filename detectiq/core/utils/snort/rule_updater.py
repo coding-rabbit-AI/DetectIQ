@@ -1,9 +1,10 @@
 import asyncio
+import re
 import shutil
 import tarfile
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiofiles
 import aiohttp
@@ -22,11 +23,12 @@ class SnortRuleUpdater:
 
     def __init__(self, rule_dir: Optional[str] = None):
         """Initialize SnortRuleUpdater."""
-        self.rule_dir = Path(rule_dir or DEFAULT_DIRS.SNORT_RULE_DIR)
+        self.rule_dir = Path(str(rule_dir or DEFAULT_DIRS.SNORT_RULE_DIR))
         self.rule_dir.mkdir(parents=True, exist_ok=True)
         self.rules_file = self.rule_dir / "snort3-community-rules.tar.gz"
         self.version_file = self.rule_dir / "version.txt"
         self.installed_version = self._read_installed_version()
+        self.package_type = "Snort v3.0"
 
         # Store individual rules in a subdirectory (consistent with other updaters)
         self.individual_rules_dir = self.rule_dir / "individual_rules"
@@ -77,10 +79,12 @@ class SnortRuleUpdater:
             await self._save_individual_rules()
 
             # Update installed version
-            self.installed_version = latest_version
-            with open(self.version_file, "w") as f:
-                f.write(latest_version)
-            logger.info(f"Updated to version {latest_version}")
+            if latest_version:
+                with open(self.version_file, "w") as f:
+                    f.write(latest_version)
+                logger.info(f"Updated to version {latest_version}")
+            else:
+                logger.warning("No version information available")
 
         except Exception as e:
             raise RuntimeError(f"Failed to update rules: {str(e)}")
@@ -129,5 +133,110 @@ class SnortRuleUpdater:
 
     async def _save_individual_rules(self) -> None:
         """Parse and save individual rules."""
-        # Implement rule parsing and saving logic here
-        pass
+        try:
+            # Look for rules in the extracted directory structure
+            rules_files = list(self.rule_dir.glob("**/*.rules"))
+            if not rules_files:
+                logger.error("No Snort rules files found")
+                return
+
+            # Process each rules file found
+            for rules_file in rules_files:
+                try:
+                    async with aiofiles.open(rules_file, "r") as f:
+                        content = await f.read()
+
+                    # Split content into individual rules
+                    rules = [rule.strip() for rule in content.split("\n") if rule.strip() and not rule.startswith("#")]
+
+                    # Save each rule to individual file
+                    for rule in rules:
+                        try:
+                            # Extract rule name from msg
+                            msg_match = re.search(r'msg:"([^"]+)";', rule)
+                            if not msg_match:
+                                logger.warning("Rule without msg field found, skipping")
+                                continue
+
+                            # Use the full msg content as the rule name
+                            rule_name = msg_match.group(1)
+
+                            # Create a valid filename from the rule name
+                            # Replace any characters that might be invalid in filenames
+                            filename = rule_name.replace("/", "_").replace("\\", "_")
+                            filename = re.sub(r'[<>:"|?*]', "_", filename)
+
+                            rule_path = self.individual_rules_dir / f"{filename}.rules"
+                            async with aiofiles.open(rule_path, "w") as f:
+                                await f.write(rule)
+
+                        except Exception as e:
+                            logger.warning(f"Failed to save individual rule: {e}")
+                            continue
+
+                    logger.info(f"Successfully saved rules from {rules_file.name}")
+
+                except Exception as e:
+                    logger.warning(f"Failed to process rules file {rules_file}: {e}")
+                    continue
+
+        except Exception as e:
+            logger.error(f"Failed to save individual rules: {e}")
+            raise
+
+    async def load_rules(self) -> List[Dict[str, Any]]:
+        """Load individual Snort rules from the rules directory."""
+        rules = []
+        try:
+            if not self.individual_rules_dir.exists():
+                logger.error("Individual rules directory not found")
+                return rules
+
+            for rule_file in self.individual_rules_dir.glob("*.rules"):
+                if rule_file.is_file():
+                    try:
+                        async with aiofiles.open(rule_file) as f:
+                            content = await f.read()
+
+                        # Extract metadata from rule
+                        msg_match = re.search(r'msg:"([^"]+)";', content)
+                        classtype_match = re.search(r"classtype:([^;]+);", content)
+                        sid_match = re.search(r"sid:(\d+);", content)
+                        priority_match = re.search(r"priority:(\d+);", content)
+
+                        title = msg_match.group(1) if msg_match else rule_file.stem
+                        classtype = classtype_match.group(1) if classtype_match else "unknown"
+                        sid = sid_match.group(1) if sid_match else None
+                        priority = int(priority_match.group(1)) if priority_match else 1
+
+                        # Map priority to severity
+                        severity_map = {1: "high", 2: "medium", 3: "low"}
+                        severity = severity_map.get(priority, "medium")
+
+                        metadata = {
+                            "classtype": classtype,
+                            "sid": sid,
+                            "priority": priority,
+                            "source": "Snort3 Community",
+                            "package_type": self.package_type,
+                        }
+
+                        rule_dict = {
+                            "title": title,
+                            "content": content,
+                            "type": "snort",
+                            "severity": severity,
+                            "metadata": metadata,
+                        }
+                        rules.append(rule_dict)
+
+                    except Exception as e:
+                        logger.warning(f"Failed to load Snort rule {rule_file}: {e}")
+                        continue
+
+            logger.info(f"Loaded {len(rules)} individual Snort rules")
+            return rules
+
+        except Exception as e:
+            logger.error(f"Failed to load Snort rules: {str(e)}")
+            raise RuntimeError(f"Failed to load Snort rules: {str(e)}")

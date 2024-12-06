@@ -239,7 +239,7 @@ class AppConfigViewSet(viewsets.ViewSet):
 
             managers = {
                 "sigma": SigmaRulesetManager(package_type=package_type),
-                "yara": YaraRulesetManager(),
+                "yara": YaraRulesetManager(package_type=package_type),
                 "snort": SnortRulesetManager(),
             }
 

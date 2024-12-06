@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from langchain.embeddings.base import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
 from detectiq.core.config import config
@@ -20,14 +21,16 @@ class SnortRulesetManager:
         rule_dir: Optional[str] = None,
         vector_store_dir: Optional[str] = None,
         package_type: Optional[str] = None,
-        embedding_model: Optional[str] = None,
+        embedding_model: Optional[Embeddings] = None,
     ):
         """Initialize the Snort ruleset manager."""
         self.rule_dir = Path(rule_dir or config.rule_directories["snort"])
         self.vector_store_dir = Path(vector_store_dir or config.vector_store_directories["snort"])
         self.rule_repository = DjangoRuleRepository()
         self.package_type = package_type or config.yara_package_type or "core"
-        self.embedding_model = embedding_model or OpenAIEmbeddings(model=config.embedding_model)
+        self.embedding_model = (
+            embedding_model if embedding_model is not None else OpenAIEmbeddings(model=config.embedding_model)
+        )
 
         # Initialize rule updater
         self.updater = SnortRuleUpdater(rule_dir=str(self.rule_dir))

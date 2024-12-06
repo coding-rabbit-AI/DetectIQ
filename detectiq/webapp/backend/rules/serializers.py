@@ -30,6 +30,9 @@ class StoredRuleSerializer(serializers.ModelSerializer):
             "versions",
             "name",
             "source",
+            "package_type",
+            "mitre_tactics",
+            "mitre_techniques",
         ]
         read_only_fields = ("created_at", "updated_at")
 

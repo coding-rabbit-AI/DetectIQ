@@ -1,5 +1,5 @@
 import { Card, CardContent, Typography, Box, Select, MenuItem, Chip, Tabs, Tab, TextField, FormControl, InputLabel, Button } from '@mui/material';
-import { Update as UpdateIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Update as UpdateIcon, Refresh as RefreshIcon, CheckCircle as CheckCircleIcon, Warning as WarningIcon } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import { settingsApi } from '@/api/client';
 import Notification from '@/components/common/Notification';
@@ -79,6 +79,12 @@ interface PackageStatuses {
   [key: string]: RulePackageStatus;
 }
 
+interface VectorStoreStatus {
+  [key: string]: {
+    exists: boolean;
+  };
+}
+
 export default function DirectoriesSection({
   sigmaPackageType = 'core',
   onSigmaPackageTypeChange,
@@ -99,9 +105,11 @@ export default function DirectoriesSection({
     type: 'success' | 'error';
     open: boolean;
   }>({ message: '', type: 'success', open: false });
+  const [vectorStoreStatus, setVectorStoreStatus] = useState<VectorStoreStatus>({});
 
   useEffect(() => {
     checkRulePackages();
+    checkVectorStores();
   }, []);
 
   const checkRulePackages = async () => {
@@ -113,6 +121,15 @@ export default function DirectoriesSection({
       console.error('Error checking rule packages:', error);
     } finally {
       setIsCheckingUpdates(false);
+    }
+  };
+
+  const checkVectorStores = async () => {
+    try {
+      const status = await settingsApi.checkVectorstores();
+      setVectorStoreStatus(status);
+    } catch (error) {
+      console.error('Error checking vectorstores:', error);
     }
   };
 
@@ -188,6 +205,22 @@ export default function DirectoriesSection({
     );
   };
 
+  const renderVectorStoreStatus = (type: string) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+      {vectorStoreStatus[type]?.exists ? (
+        <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <CheckCircleIcon fontSize="small" />
+          Vector store initialized
+        </Typography>
+      ) : (
+        <Typography variant="caption" color="warning.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <WarningIcon fontSize="small" />
+          Vector store not initialized
+        </Typography>
+      )}
+    </Box>
+  );
+
   const renderActionButtons = (type: string, packageType?: string) => (
     <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
       <Button
@@ -203,8 +236,9 @@ export default function DirectoriesSection({
         startIcon={<RefreshIcon />}
         onClick={() => handleRebuildVectorStore(type)}
         disabled={isRebuilding}
+        color={vectorStoreStatus[type]?.exists ? 'primary' : 'warning'}
       >
-        {isRebuilding ? 'Rebuilding...' : 'Rebuild Vector Store'}
+        {isRebuilding ? 'Rebuilding...' : vectorStoreStatus[type]?.exists ? 'Rebuild Vector Store' : 'Create Vector Store'}
       </Button>
     </Box>
   );
@@ -274,6 +308,7 @@ export default function DirectoriesSection({
                 variant="outlined"
                 helperText="Vector stores will be created here."
               />
+              {renderVectorStoreStatus('sigma')}
               {renderActionButtons('sigma', sigmaPackageType)}
             </Box>
           )}
@@ -329,6 +364,7 @@ export default function DirectoriesSection({
                 variant="outlined"
                 helperText="Vector stores will be created here."
               />
+              {renderVectorStoreStatus('yara')}
               {renderActionButtons('yara', yaraPackageType)}
             </Box>
           )}
@@ -355,7 +391,24 @@ export default function DirectoriesSection({
                 variant="outlined"
                 helperText="Vector stores will be created here."
               />
+              {renderVectorStoreStatus('snort')}
               {renderActionButtons('snort')}
+            </Box>
+          )}
+
+          {/* Snort Settings Tab */}
+          {selectedTab === 3 && (
+            <Box sx={{ mt: 3 }}>
+              {renderUpdateStatus('generated')}
+              <Typography variant="subtitle2" gutterBottom>Generated Rule Directory</Typography>
+              <TextField
+                value={ruleDirectories.generated || ''}
+                onChange={(e) => onRuleDirectoryChange('generated', e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ mb: 2 }}
+                helperText="Rule packages are saved and extracted here. Contents are deleted and overwritten upon updating."
+              />
             </Box>
           )}
         </CardContent>

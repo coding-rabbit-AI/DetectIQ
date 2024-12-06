@@ -7,6 +7,9 @@ import splunklib.results as splunk_results
 from pydantic import Field, SecretStr
 
 from detectiq.core.integrations.base import BaseSIEMIntegration, SIEMCredentials
+from detectiq.core.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class SplunkCredentials(SIEMCredentials):
@@ -57,16 +60,16 @@ class SplunkIntegration(BaseSIEMIntegration):
     def __init__(self, credentials: Optional[SplunkCredentials] = None):
         """Initialize Splunk integration."""
         super().__init__(credentials)
+        self.credentials = cast(SplunkCredentials, self.credentials)
+        self.credentials.owner = self.credentials.owner or self.credentials.username
 
     def _initialize_client(self) -> None:
         """Initialize the Splunk client."""
         if not self.credentials:
             raise ValueError("Credentials are required for Splunk integration")
 
-        credentials = cast(SplunkCredentials, self.credentials)
-
         # Use the cleaned host value
-        host = credentials.host
+        host = self.credentials.host
 
         if not host:
             raise ValueError("Host is required for Splunk integration")
@@ -74,11 +77,11 @@ class SplunkIntegration(BaseSIEMIntegration):
         try:
             self.service = splunk_client.connect(
                 host=host,
-                port=credentials.port,
-                username=credentials.username,
-                password=credentials.password.get_secret_value() if credentials.password else "",
-                app=credentials.app,
-                owner=credentials.owner,
+                port=self.credentials.port,
+                username=self.credentials.username,
+                password=self.credentials.password.get_secret_value() if self.credentials.password else "",
+                app=self.credentials.app,
+                owner=self.credentials.owner or self.credentials.username,
             )
         except Exception as e:
             raise ValueError(f"Failed to connect to Splunk: {str(e)}")
@@ -122,15 +125,21 @@ class SplunkIntegration(BaseSIEMIntegration):
 
     async def create_rule(self, rule: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new correlation search."""
-        name = rule.pop("title").strip()
-        search = rule.pop("search").strip()
-        saved_search = await asyncio.to_thread(self.service.saved_searches.create, name=name, search=search, **rule)
+        try:
+            name = rule.pop("title").strip()
+            search = rule.pop("search").strip()
 
-        return {
-            "id": saved_search.name,
-            "title": saved_search.name,
-            "search": saved_search.content.get("search"),
-        }
+            saved_search = await asyncio.to_thread(self.service.saved_searches.create, name=name, search=search, **rule)
+            logger.debug(f"Created saved search: {saved_search.name}")
+
+            return {
+                "id": saved_search.name,
+                "title": saved_search.name,
+                "search": saved_search.content.get("search"),
+            }
+        except Exception as e:
+            logger.error(f"Error creating rule: {str(e)}")
+            raise
 
     def update_rule_permissions(
         self, rule_name: str, sharing: str = "global", owner: str = "", perms_read: str = "*"

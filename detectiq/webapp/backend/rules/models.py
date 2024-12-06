@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 
 User = get_user_model()
@@ -6,6 +7,23 @@ User = get_user_model()
 
 class StoredRule(models.Model):
     """Model for storing detection rules."""
+
+    MITRE_TACTICS = {
+        "reconnaissance": "Reconnaissance",
+        "resource_development": "Resource Development",
+        "initial_access": "Initial Access",
+        "execution": "Execution",
+        "persistence": "Persistence",
+        "privilege_escalation": "Privilege Escalation",
+        "defense_evasion": "Defense Evasion",
+        "credential_access": "Credential Access",
+        "discovery": "Discovery",
+        "lateral_movement": "Lateral Movement",
+        "collection": "Collection",
+        "command_and_control": "Command and Control",
+        "exfiltration": "Exfiltration",
+        "impact": "Impact",
+    }
 
     title = models.CharField(max_length=255)
     content = models.TextField()
@@ -28,12 +46,35 @@ class StoredRule(models.Model):
         ],
         default="DetectIQ",
     )
+    package_type = models.CharField(max_length=50, null=True, blank=True)
+    mitre_tactics = models.JSONField(default=list, blank=True, help_text="List of MITRE ATT&CK tactics")
+    mitre_techniques = models.JSONField(default=list, blank=True, help_text="List of MITRE ATT&CK technique IDs")
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
         return self.title
+
+    def clean(self):
+        """Validate MITRE fields."""
+        super().clean()
+
+        # Validate tactics
+        if self.mitre_tactics:
+            valid_tactics = {t[0] for t in self.MITRE_TACTICS}
+            invalid_tactics = [t for t in self.mitre_tactics if t not in valid_tactics]
+            if invalid_tactics:
+                raise ValidationError(f"Invalid MITRE tactics: {invalid_tactics}")
+
+        # Validate techniques using regex
+        if self.mitre_techniques:
+            import re
+
+            pattern = r"^T\d{4}(?:\.\d{3})?$"
+            invalid_techniques = [t for t in self.mitre_techniques if not re.match(pattern, t)]
+            if invalid_techniques:
+                raise ValidationError(f"Invalid MITRE technique IDs: {invalid_techniques}")
 
 
 class RuleVersion(models.Model):

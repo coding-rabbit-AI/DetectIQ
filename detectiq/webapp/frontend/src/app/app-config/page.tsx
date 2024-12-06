@@ -25,6 +25,7 @@ export default function SettingsPage() {
       sigma: '',
       yara: '',
       snort: '',
+      generated: '',
     },
     sigma_package_type: 'core',
     yara_package_type: 'core',

@@ -141,9 +141,12 @@ class YaraRuleUpdater:
 
             # Update installed version
             self.installed_version = latest_version
-            with open(self.version_file, "w") as f:
-                f.write(latest_version)
-            logger.info(f"Updated to version {latest_version}")
+            if latest_version:
+                with open(self.version_file, "w") as f:
+                    f.write(latest_version)
+                logger.info(f"Updated to version {latest_version}")
+            else:
+                logger.warning("No version information available")
 
         except Exception as e:
             raise RuntimeError(f"Failed to update rules: {str(e)}")
@@ -318,6 +321,8 @@ class YaraRuleUpdater:
                             orig_metadata = {k: v for i in orig_metadata for k, v in i.items()}
                         elif not orig_metadata:
                             orig_metadata = metadata
+                        orig_metadata["source"] = "YARA-Forge"
+                        orig_metadata["package_type"] = self.package_type
                         rule_dict = {
                             "title": metadata.get("title", rule_file.stem).replace(" ", "_"),
                             "content": content,

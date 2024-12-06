@@ -23,8 +23,8 @@ class YaraRulesetManager:
         package_type: Optional[str] = None,
     ):
         """Initialize the YARA ruleset manager."""
-        self.rule_dir = Path(rule_dir or config.rule_directories.get("yara"))
-        self.vector_store_dir = Path(vector_store_dir or config.vector_store_directories.get("yara"))
+        self.rule_dir = Path(str(rule_dir or config.rule_directories.get("yara")))
+        self.vector_store_dir = Path(str(vector_store_dir or config.vector_store_directories.get("yara")))
         self.rule_repository = DjangoRuleRepository()
         self.embedding_model = embedding_model or OpenAIEmbeddings(model=config.embedding_model)
         self.package_type = package_type or config.yara_package_type or "core"

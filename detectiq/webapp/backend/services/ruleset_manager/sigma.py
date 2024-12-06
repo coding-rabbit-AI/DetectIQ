@@ -1,13 +1,16 @@
 import asyncio
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
+from langchain.embeddings.base import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
 from detectiq.core.config import config
 from detectiq.core.llm.sigma_rules import SigmaLLM
 from detectiq.core.utils.logging import get_logger
 from detectiq.core.utils.sigma.rule_updater import SigmaRuleUpdater
+from detectiq.webapp.backend.rules.models import StoredRule
 from detectiq.webapp.backend.services.rule_service import DjangoRuleRepository
 
 logger = get_logger(__name__)
@@ -19,14 +22,16 @@ class SigmaRulesetManager:
         rule_dir: Optional[str] = None,
         vector_store_dir: Optional[str] = None,
         package_type: Optional[str] = None,
-        embedding_model: Optional[str] = None,
+        embedding_model: Optional[Embeddings] = None,
     ):
         """Initialize the Sigma ruleset manager."""
-        self.rule_dir = Path(rule_dir or config.rule_directories.get("sigma"))
-        self.vector_store_dir = Path(vector_store_dir or config.vector_store_directories.get("sigma"))
+        self.rule_dir = Path(str(rule_dir or config.rule_directories.get("sigma")))
+        self.vector_store_dir = Path(str(vector_store_dir or config.vector_store_directories.get("sigma")))
         self.rule_repository = DjangoRuleRepository()
         self.package_type = package_type or config.sigma_package_type or "core"
-        self.embedding_model = embedding_model or OpenAIEmbeddings(model=config.embedding_model)
+        self.embedding_model = (
+            embedding_model if embedding_model is not None else OpenAIEmbeddings(model=config.embedding_model)
+        )
         # Initialize rule updater
         self.updater = SigmaRuleUpdater(rule_dir=str(self.rule_dir), package_type=self.package_type)
 
