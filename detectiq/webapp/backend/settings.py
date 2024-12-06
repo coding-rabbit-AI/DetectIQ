@@ -15,7 +15,7 @@ env = environ.Env(
 )
 
 # Base directory
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = DEFAULT_DIRS.BASE_DIR
 
 # Load environment variables from .env file
 env_file = BASE_DIR / ".env"
