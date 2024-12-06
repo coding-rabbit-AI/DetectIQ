@@ -190,7 +190,7 @@ fabric.properties
 detectiq/llm/data/*
 .cursorrules
 test.py
-.vscode
+.vscode/settings.json
 .ruff_cache
 data/*cspell.json
 
