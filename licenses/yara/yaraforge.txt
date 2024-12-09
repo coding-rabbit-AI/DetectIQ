@@ -12,17 +12,17 @@
  * Force Exclude Importance Level: 50
  * Minimum Age (in days): 1
  * Minimum Score: 65
- * Creation Date: 2024-12-01
- * Number of Rules: 6630
- * Skipped: 2217 (age), 730 (quality), 926 (score), 2017 (importance)
+ * Creation Date: 2024-12-08
+ * Number of Rules: 6635
+ * Skipped: 2226 (age), 732 (quality), 926 (score), 2017 (importance)
  */
 /*
  * YARA Rule Set
  * Repository Name: Elastic
  * Repository: https://github.com/elastic/protections-artifacts/
- * Retrieval Date: 2024-12-01
- * Git Commit: 28336769b72540c8b02aa04e1b47dfc093f3ea03
- * Number of Rules: 1731
+ * Retrieval Date: 2024-12-08
+ * Git Commit: 8824c8f250f189be8f7caf30dac0d045b7fb8651
+ * Number of Rules: 1744
  * Skipped: 0 (age), 102 (quality), 3 (score), 0 (importance)
  *
  * 
