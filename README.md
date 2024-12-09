@@ -32,7 +32,7 @@ To get started, run the commands below. For more information, refer to the [docs
 git clone https://github.com/slincoln-aiq/DetectIQ.git
 ```
 
-**Step 2.** Set your environment variables (using [`.env.example`](./env.example) as a template).
+**Step 2.** Set your environment variables (using [`.env.example`](.env.example) as a template).
 ```bash
 cp .env.example .env
 ```
