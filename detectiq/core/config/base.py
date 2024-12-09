@@ -106,8 +106,13 @@ class ConfigManager:
         return DetectIQConfig(**config_dict)
 
     def _get_default_config(self) -> dict:
+        try:
+            openai_api_key = keyring.get_password(self.APP_NAME, "openai_api_key")
+        except Exception as err:
+            openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        
         return {
-            "openai_api_key": keyring.get_password(self.APP_NAME, "openai_api_key") or os.getenv("OPENAI_API_KEY", ""),
+            "openai_api_key": openai_api_key,
             "llm_model": os.getenv("LLM_MODEL", "gpt-4o"),
             "temperature": round(float(os.getenv("LLM_TEMPERATURE", 0.10)), 2),
             "embedding_model": os.getenv("embedding_model", "text-embedding-3-small"),
