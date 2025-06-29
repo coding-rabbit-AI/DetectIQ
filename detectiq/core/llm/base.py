@@ -10,7 +10,8 @@ from langchain.embeddings.base import Embeddings
 from langchain.schema.document import Document
 from langchain.schema.language_model import BaseLanguageModel
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.llms import ChatOllama
+import os
 
 from detectiq.core.utils.logging import get_logger
 from detectiq.globals import DEFAULT_DIRS
@@ -123,3 +124,20 @@ class BaseLLMRules(ABC):
     def split_rule_docs(self, documents: List[Document]) -> List[Document]:
         """Do not split documents to preserve rule context."""
         return documents
+
+
+# DetectIQ 전체에서 LLM 인스턴스는 반드시 이 함수만 사용하도록 통일!
+def get_llm():
+    """
+    DetectIQ의 모든 LLM 인스턴스는 이 함수로 생성하세요.
+    환경변수 LLM_PROVIDER=ollama 이면 Ollama API, 아니면 OpenAI API 사용.
+    """
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+    model = os.getenv("LLM_MODEL", "gpt-4o")
+    if provider == "ollama":
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        return ChatOllama(model=model, base_url=base_url)
+    else:
+        from langchain_openai import ChatOpenAI
+        openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        return ChatOpenAI(model=model, api_key=openai_api_key)

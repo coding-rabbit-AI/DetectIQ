@@ -49,6 +49,37 @@ bash start.sh run
 
 **Step 5.** Use your favorite browser to navigate to [http://localhost:3000](http://localhost:3000).
 
+## Ollama(로컬/외부 LLM) 연동 사용법
+
+DetectIQ는 OpenAI API 대신 Ollama API(로컬 또는 외부 서버)로도 동작할 수 있습니다.
+
+### Ollama 서버 준비
+1. [Ollama 공식 문서](https://ollama.com/)를 참고하여 서버를 설치 및 실행하세요.
+2. 원하는 모델(예: llama2, mistral 등)을 다운로드하고 서버에 로드하세요.
+   ```bash
+   ollama pull llama2
+   ollama serve # 또는 ollama run llama2
+   ```
+3. 서버가 외부에서 접근 가능하도록 방화벽/포트 설정을 확인하세요. (기본 포트: 11434)
+
+### DetectIQ에서 Ollama 사용 설정
+1. `.env` 또는 환경변수에 아래 항목을 추가/수정하세요:
+   ```env
+   LLM_MODEL=llama2
+   OLLAMA_BASE_URL=http://<ollama-server-host>:11434
+   LLM_PROVIDER=ollama
+   ```
+2. 별도의 OpenAI API Key는 필요하지 않습니다.
+3. DetectIQ 내부 LLM 인스턴스 생성은 `detectiq/core/llm/base.py`의 `get_ollama_llm()` 함수를 통해 Ollama API를 사용합니다.
+
+### 코드에서 Ollama LLM 사용 예시
+```python
+from detectiq.core.llm.base import get_ollama_llm
+llm = get_ollama_llm(model="llama2", base_url="http://<ollama-server-host>:11434")
+```
+
+> Ollama 서버가 반드시 실행 중이어야 하며, 네트워크로 접근 가능해야 합니다.
+
 ## Current Features
 ### AI-Powered Detection 
 - Create and optimize detection rules using OpenAI's LLM models
